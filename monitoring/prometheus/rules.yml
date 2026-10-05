@@ -1,0 +1,54 @@
+groups:
+  - name: skip-the-trip
+    rules:
+      - alert: SkipTheTripApiDown
+        expr: up{job="skip-the-trip-api"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Skip The Trip API is unavailable
+          description: Prometheus has been unable to scrape the API for two minutes.
+
+      - alert: SkipTheTripHighErrorRate
+        expr: |
+          sum(rate(skip_the_trip_http_requests_total{status_code=~"5.."}[5m]))
+          /
+          clamp_min(sum(rate(skip_the_trip_http_requests_total[5m])), 0.001)
+          > 0.02
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: API 5xx rate is above 2%
+          description: More than 2% of API requests returned 5xx responses over five minutes.
+
+      - alert: SkipTheTripHighLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(skip_the_trip_http_request_duration_seconds_bucket[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: API p95 latency is above 500 ms
+          description: The API p95 request latency exceeded 500 ms for five minutes.
+
+      - alert: SkipTheTripDatabaseUnavailable
+        expr: skip_the_trip_database_ready == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: PostgreSQL readiness check is failing
+          description: The API cannot reach the reports database.
+
+      - alert: SkipTheTripMetricsMissing
+        expr: absent_over_time(up{job="skip-the-trip-api"}[5m]) == 1
+        labels:
+          severity: critical
+        annotations:
+          summary: API metrics have disappeared
+          description: No target series has been recorded for the API in five minutes.

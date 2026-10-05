@@ -1,0 +1,280 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Accessibility } from "lucide-react";
+import { AnimatePresence, m, useReducedMotion } from "motion/react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { Link, Route, Routes, useLocation } from "react-router-dom";
+import { StatusPanel } from "./components/StatusPanel";
+import { AppSkeleton, Button, Selector, Spinner, Toast } from "./components/ui";
+import {
+  type Bathroom,
+  bathroomKey,
+  bathroomSchema,
+  buildings,
+  categories,
+  floors,
+} from "./domain/bathroom";
+import { motionTokens, springs } from "./lib/motion";
+import { observability } from "./lib/observability";
+import {
+  getReport,
+  loadSelection,
+  saveSelection,
+  submitReport,
+} from "./services/reports";
+
+const Privacy = lazy(() =>
+  import("./pages/Information").then((module) => ({ default: module.Privacy })),
+);
+const NotFound = lazy(() =>
+  import("./pages/Information").then((module) => ({
+    default: module.NotFound,
+  })),
+);
+function CategoryIcon({ category }: { category: string }) {
+  if (category === "Accessible")
+    return (
+      <Accessibility className="bathroom-icon" size={40} strokeWidth={1.8} />
+    );
+  return (
+    <span
+      className={`bathroom-icon person-icon ${category.toLowerCase()}`}
+      aria-hidden="true"
+    />
+  );
+}
+function Home() {
+  const reduced = useReducedMotion();
+  const [selection, setSelection] = useState<Partial<Bathroom>>(loadSelection);
+  const [now, setNow] = useState(Date.now);
+  const [toast, setToast] = useState("");
+  const client = useQueryClient();
+  const parsed = bathroomSchema.safeParse(selection);
+  const bathroom = parsed.success ? parsed.data : null;
+  const key = bathroom ? bathroomKey(bathroom) : "none";
+  const query = useQuery({
+    queryKey: ["report", key],
+    queryFn: () => {
+      if (!bathroom) throw new Error("Select a bathroom");
+      return getReport(bathroom);
+    },
+    enabled: Boolean(bathroom),
+    retry: false,
+    refetchInterval: bathroom ? 15_000 : false,
+    refetchOnReconnect: true,
+    refetchOnWindowFocus: true,
+  });
+  const mutation = useMutation({
+    mutationFn: ({
+      location,
+      available,
+    }: {
+      location: Bathroom;
+      available: boolean;
+    }) => submitReport(location, available),
+    onSuccess: (report, variables) => {
+      client.setQueryData(["report", bathroomKey(variables.location)], report);
+      setNow(Date.now());
+      observability.trackEvent("report.submitted", {
+        "report.available": variables.available,
+      });
+      setToast("Thanks! Your update helps the next person.");
+    },
+    onError: (error) => {
+      observability.captureException(error, { operation: "submit-report" });
+      setToast("Could not save your update. Please try again.");
+    },
+  });
+  useEffect(() => {
+    saveSelection(selection);
+  }, [selection]);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+  const changeSelection = (next: Partial<Bathroom>) => {
+    mutation.reset();
+    setSelection(next);
+    observability.trackEvent("selection.changed", {
+      "selection.complete": bathroomSchema.safeParse(next).success,
+    });
+  };
+  const progress = selection.category
+    ? 100
+    : selection.floor
+      ? 72
+      : selection.building
+        ? 42
+        : 12;
+  return (
+    <m.main
+      className="home-layout"
+      initial={{ opacity: 0, y: reduced ? 0 : motionTokens.distance.md }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: reduced ? 0 : -motionTokens.distance.sm }}
+      transition={{
+        duration: motionTokens.duration.normal,
+        ease: motionTokens.easing.smooth,
+      }}
+    >
+      <section className="app-card" aria-label="Bathroom availability checker">
+        <div className="product-intro">
+          <span className="eyebrow">Live building utility</span>
+          <h1>Is it worth the trip?</h1>
+          <p>Three quick choices. One useful answer.</p>
+        </div>
+        <div
+          className="journey-progress"
+          aria-label={`${progress}% complete`}
+          role="progressbar"
+          aria-valuenow={progress}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        >
+          <m.span
+            animate={{ scaleX: progress / 100 }}
+            transition={springs.gentle}
+          />
+        </div>
+        <Selector
+          label="Select building"
+          options={buildings}
+          value={selection.building}
+          disabled={mutation.isPending}
+          onChange={(building) => changeSelection({ building })}
+        />
+        <Selector
+          label="Select floor"
+          options={floors}
+          value={selection.floor}
+          disabled={!selection.building || mutation.isPending}
+          onChange={(floor) =>
+            changeSelection({ building: selection.building, floor })
+          }
+        />
+        <Selector
+          label="Select user"
+          options={categories}
+          value={selection.category}
+          disabled={!selection.floor || mutation.isPending}
+          onChange={(category) => changeSelection({ ...selection, category })}
+          renderIcon={(category) => <CategoryIcon category={category} />}
+        />
+        <h2 className="availability-label">Available ?</h2>
+        <div className="vote-section">
+          <div className="vote-buttons">
+            <Button
+              className="vote-yes"
+              aria-label="Yes, available"
+              disabled={
+                !bathroom ||
+                query.isPending ||
+                query.isError ||
+                mutation.isPending
+              }
+              onClick={() => {
+                if (bathroom)
+                  mutation.mutate({ location: bathroom, available: true });
+              }}
+            >
+              {mutation.isPending && mutation.variables.available ? (
+                <Spinner />
+              ) : null}
+              Yes
+              {bathroom && !query.isPending && !query.isError && (
+                <span
+                  key={`yes-${key}-${query.data?.yesCount ?? 0}`}
+                  className="vote-badge yes-badge"
+                  role="status"
+                  aria-label={`${query.data?.yesCount ?? 0} YES votes`}
+                >
+                  {query.data?.yesCount ?? 0}
+                </span>
+              )}
+            </Button>
+            <span className="vote-indicator" aria-hidden="true" />
+            <Button
+              className="vote-no"
+              aria-label="No, unavailable"
+              disabled={
+                !bathroom ||
+                query.isPending ||
+                query.isError ||
+                mutation.isPending
+              }
+              onClick={() => {
+                if (bathroom)
+                  mutation.mutate({ location: bathroom, available: false });
+              }}
+            >
+              {mutation.isPending && !mutation.variables.available ? (
+                <Spinner />
+              ) : null}
+              No
+              {bathroom && !query.isPending && !query.isError && (
+                <span
+                  key={`no-${key}-${query.data?.noCount ?? 0}`}
+                  className="vote-badge no-badge"
+                  role="status"
+                  aria-label={`${query.data?.noCount ?? 0} NO votes`}
+                >
+                  {query.data?.noCount ?? 0}
+                </span>
+              )}
+            </Button>
+          </div>
+          <StatusPanel
+            bathroom={bathroom}
+            report={query.data}
+            now={now}
+            loading={Boolean(bathroom) && query.isPending}
+            error={query.isError}
+            onRetry={() => {
+              void query.refetch();
+            }}
+          />
+        </div>
+      </section>
+      {toast && <Toast message={toast} onClose={() => setToast("")} />}
+    </m.main>
+  );
+}
+export function App() {
+  const location = useLocation();
+  return (
+    <div className="experience" data-theme="signal-core">
+      <div className="ambient ambient-one" aria-hidden="true" />
+      <div className="ambient ambient-two" aria-hidden="true" />
+      <m.div className="site-shell" layout transition={springs.gentle}>
+        <header className="site-header">
+          <Link to="/" className="brand" aria-label="Skip the Trip home">
+            <span className="brand-dots">
+              <i />
+              <i />
+              <i />
+            </span>
+            <span className="brand-name">SKIP THE TRIP</span>
+            <span className="brand-edition">Signal Core</span>
+          </Link>
+        </header>
+        <Suspense fallback={<AppSkeleton />}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<Home />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </AnimatePresence>
+        </Suspense>
+        <footer className="site-footer">
+          <span>Local demo · Reports valid for 30 min</span>
+          <Link to="/privacy">Privacy</Link>
+        </footer>
+      </m.div>
+    </div>
+  );
+}

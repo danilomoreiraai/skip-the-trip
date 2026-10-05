@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: Skip The Trip
+    orgId: 1
+    folder: Skip The Trip
+    type: file
+    disableDeletion: true
+    editable: false
+    options:
+      path: /var/lib/grafana/dashboards
