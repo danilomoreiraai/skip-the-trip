@@ -7,6 +7,9 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:?Set the EasyPanel PostgreSQL internal URL}
     command: ["npm", "run", "db:migrate:prod"]
+    networks:
+      - default
+      - easypanel
     restart: "no"
 
   server:
@@ -27,6 +30,9 @@ services:
     depends_on:
       migrate:
         condition: service_completed_successfully
+    networks:
+      - default
+      - easypanel
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3333/health/ready"]
       interval: 10s
@@ -55,3 +61,7 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
+
+networks:
+  easypanel:
+    external: true
