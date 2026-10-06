@@ -25,6 +25,11 @@ import {
 import { motionTokens, springs } from "./lib/motion";
 import { observability } from "./lib/observability";
 import {
+  getVoteCooldown,
+  type VoteCooldowns,
+  withVoteCooldown,
+} from "./lib/vote-cooldown";
+import {
   getReport,
   loadSelection,
   saveSelection,
@@ -57,11 +62,12 @@ function Home() {
   const [selection, setSelection] = useState<Partial<Bathroom>>(loadSelection);
   const [now, setNow] = useState(Date.now);
   const [toast, setToast] = useState("");
-  const [voteCooldownUntil, setVoteCooldownUntil] = useState(0);
+  const [voteCooldowns, setVoteCooldowns] = useState<VoteCooldowns>({});
   const client = useQueryClient();
   const parsed = bathroomSchema.safeParse(selection);
   const bathroom = parsed.success ? parsed.data : null;
   const key = bathroom ? bathroomKey(bathroom) : "none";
+  const voteCooldownUntil = getVoteCooldown(voteCooldowns, bathroom);
   const query = useQuery({
     queryKey: ["report", key],
     queryFn: () => {
@@ -85,16 +91,24 @@ function Home() {
     onSuccess: (report, variables) => {
       client.setQueryData(["report", bathroomKey(variables.location)], report);
       setNow(Date.now());
-      setVoteCooldownUntil(Date.now() + 5 * 60_000);
+      setVoteCooldowns((current) =>
+        withVoteCooldown(current, variables.location, Date.now() + 5 * 60_000),
+      );
       observability.trackEvent("report.submitted", {
         "report.available": variables.available,
       });
       setToast("Thanks! Your update helps the next person.");
     },
-    onError: (error) => {
+    onError: (error, variables) => {
       observability.captureException(error, { operation: "submit-report" });
       if (error instanceof VoteCooldownError) {
-        setVoteCooldownUntil(Date.now() + error.retryAfterSeconds * 1000);
+        setVoteCooldowns((current) =>
+          withVoteCooldown(
+            current,
+            variables.location,
+            Date.now() + error.retryAfterSeconds * 1000,
+          ),
+        );
         setToast(
           `Please wait ${error.retryAfterSeconds}s before voting again.`,
         );

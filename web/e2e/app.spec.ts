@@ -106,6 +106,20 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
   );
   await expect(page.locator(".status-bar")).toHaveCount(1);
   await expect(page.getByRole("meter")).toHaveAttribute("value", "100");
+  await page.getByRole("button", { name: "Male", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "No, unavailable" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "1", exact: true }).click();
+  await page.getByRole("button", { name: "Accessible", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "No, unavailable" }),
+  ).toBeEnabled();
+  await page.getByRole("button", { name: "3", exact: true }).click();
+  await page.getByRole("button", { name: "Accessible", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "No, unavailable" }),
+  ).toBeDisabled();
   await page.reload();
   await expect(page.getByRole("meter")).toHaveAttribute("value", "100");
   await expect(page.locator(".status-bar")).toHaveCount(1);
