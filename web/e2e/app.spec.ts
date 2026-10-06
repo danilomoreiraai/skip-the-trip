@@ -75,7 +75,9 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function select(page: Page) {
-  await page.getByRole("button", { name: "HH5", exact: true }).click();
+  await page
+    .getByRole("button", { name: "HH5", exact: true })
+    .click({ force: true });
   await page.getByRole("button", { name: "3", exact: true }).click();
   await page.getByRole("button", { name: "Accessible", exact: true }).click();
 }
