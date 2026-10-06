@@ -8,6 +8,9 @@ export const bathroomSchema = z.object({
   category: z.enum(categories),
 });
 export type Bathroom = z.infer<typeof bathroomSchema>;
+export function isBuildingAvailable(building: (typeof buildings)[number]) {
+  return building === "HH5";
+}
 const reportSchema = z.object({
   available: z.boolean(),
   reportedAt: z.number().finite().nonnegative(),

@@ -9,6 +9,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().min(1).default("http://localhost:5173"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   REPORT_WINDOW_MINUTES: z.coerce.number().int().positive().max(120).default(30),
+  VOTE_COOLDOWN_SECONDS: z.coerce.number().int().positive().max(3_600).default(300),
   REPORT_RETENTION_DAYS: z.coerce.number().int().positive().max(3_650).default(30),
   SENTRY_DSN: z.preprocess(
     (value) => (value === "" ? undefined : value),

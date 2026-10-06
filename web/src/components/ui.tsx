@@ -39,6 +39,8 @@ export function Selector<T extends string>({
   onChange,
   disabled = false,
   renderIcon,
+  isOptionDisabled,
+  getOptionHint,
 }: {
   label: string;
   options: readonly T[];
@@ -46,6 +48,8 @@ export function Selector<T extends string>({
   onChange: (value: T) => void;
   disabled?: boolean;
   renderIcon?: (value: T) => ReactNode;
+  isOptionDisabled?: (value: T) => boolean;
+  getOptionHint?: (value: T) => string | undefined;
 }) {
   const reduced = useReducedMotion();
   return (
@@ -70,11 +74,15 @@ export function Selector<T extends string>({
             <button
               type="button"
               aria-pressed={value === option}
+              disabled={isOptionDisabled?.(option)}
               className={`option ${value === option ? "selected" : ""}`}
               onClick={() => onChange(option)}
             >
               {renderIcon?.(option)}
               <span>{option}</span>
+              {getOptionHint?.(option) && (
+                <small className="option-hint">{getOptionHint(option)}</small>
+              )}
               {renderIcon && value === option && (
                 <Check className="category-check" size={14} />
               )}

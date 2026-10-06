@@ -20,6 +20,13 @@ const envSchema = z.object({
     .default("development"),
   VITE_RELEASE: z.string().min(1).default("local"),
   VITE_SENTRY_DSN: optionalUrl,
+  VITE_GOOGLE_ANALYTICS_ID: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z
+      .string()
+      .regex(/^G-[A-Z0-9]+$/)
+      .optional(),
+  ),
   VITE_OTEL_EXPORTER_OTLP_ENDPOINT: optionalUrl,
   VITE_OTEL_SERVICE_NAME: z.string().min(1).default("skip-the-trip-web"),
 });

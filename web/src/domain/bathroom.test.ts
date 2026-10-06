@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   bathroomKey,
   bathroomSchema,
+  isBuildingAvailable,
   isRecent,
   REPORT_LIFETIME,
 } from "./bathroom";
@@ -38,5 +39,10 @@ describe("report freshness", () => {
         category: "Male",
       }).success,
     ).toBe(false);
+  });
+  it("only exposes HH5 for live interaction", () => {
+    expect(isBuildingAvailable("HH5")).toBe(true);
+    expect(isBuildingAvailable("HH1")).toBe(false);
+    expect(isBuildingAvailable("HH4")).toBe(false);
   });
 });

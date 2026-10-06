@@ -4,10 +4,30 @@ import type { Bathroom, CreateReportInput, ReportSummary } from "./domain/report
 import type { ReportsRepository } from "./modules/reports/repository.js";
 
 function createFakeRepository(): ReportsRepository {
-  const votes: CreateReportInput[] = [];
+  const votes: Array<CreateReportInput & { createdAt: Date }> = [];
   return {
     async create(input) {
-      if (!votes.some((vote) => vote.idempotencyKey === input.idempotencyKey)) votes.push(input);
+      if (!votes.some((vote) => vote.idempotencyKey === input.idempotencyKey))
+        votes.push({ ...input, createdAt: new Date() });
+    },
+    async createWithCooldown(input, cooldownSeconds) {
+      if (votes.some((vote) => vote.idempotencyKey === input.idempotencyKey))
+        return { created: false, retryAfterSeconds: 0 };
+      const latest = votes
+        .filter(
+          (vote) =>
+            vote.clientId === input.clientId &&
+            vote.building === input.building &&
+            vote.floor === input.floor &&
+            vote.category === input.category,
+        )
+        .at(-1)?.createdAt;
+      const retryAfterSeconds = latest
+        ? Math.ceil(cooldownSeconds - (Date.now() - latest.getTime()) / 1000)
+        : 0;
+      if (retryAfterSeconds > 0) return { created: false, retryAfterSeconds };
+      votes.push({ ...input, createdAt: new Date() });
+      return { created: true, retryAfterSeconds: 0 };
     },
     async findSummary(bathroom: Bathroom, _since: Date, expiresAt): Promise<ReportSummary> {
       const matching = votes.filter((vote) => vote.building === bathroom.building && vote.floor === bathroom.floor && vote.category === bathroom.category);
@@ -29,7 +49,12 @@ function createFakeRepository(): ReportsRepository {
   };
 }
 
-const config = { CORS_ORIGIN: "http://localhost:5173", LOG_LEVEL: "silent" as const, REPORT_WINDOW_MINUTES: 30 };
+const config = {
+  CORS_ORIGIN: "http://localhost:5173",
+  LOG_LEVEL: "silent" as const,
+  REPORT_WINDOW_MINUTES: 30,
+  VOTE_COOLDOWN_SECONDS: 300,
+};
 const vote = {
   building: "HH1",
   floor: "G",
@@ -53,6 +78,26 @@ describe("reports routes", () => {
     await app.inject({ method: "POST", url: "/reports", payload: vote });
     const response = await app.inject({ method: "POST", url: "/reports", payload: vote });
     expect(response.json()).toMatchObject({ yesCount: 1 });
+    await app.close();
+  });
+
+  it("rejects repeated votes from the same device and bathroom during cooldown", async () => {
+    const app = await buildApp({ config, reportsRepository: createFakeRepository() });
+    await app.inject({ method: "POST", url: "/reports", payload: vote });
+    const response = await app.inject({
+      method: "POST",
+      url: "/reports",
+      payload: {
+        ...vote,
+        available: false,
+        idempotencyKey: "550e8400-e29b-41d4-a716-446655440002",
+      },
+    });
+    expect(response.statusCode).toBe(429);
+    expect(response.json()).toMatchObject({
+      message: "Please wait before voting on this bathroom again",
+      retryAfterSeconds: expect.any(Number),
+    });
     await app.close();
   });
 

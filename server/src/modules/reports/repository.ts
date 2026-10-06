@@ -5,6 +5,10 @@ import type { Bathroom, CreateReportInput, ReportSummary } from "../../domain/re
 
 export type ReportsRepository = {
   create(input: CreateReportInput): Promise<void>;
+  createWithCooldown(
+    input: CreateReportInput,
+    cooldownSeconds: number,
+  ): Promise<{ created: boolean; retryAfterSeconds: number }>;
   findSummary(bathroom: Bathroom, since: Date, expiresAt: (reportedAt: Date) => Date): Promise<ReportSummary>;
   deleteExpired(before: Date): Promise<number>;
   ping(): Promise<void>;
@@ -14,6 +18,34 @@ export function createReportsRepository(db: Database): ReportsRepository {
   return {
     async create(input) {
       await db.insert(reports).values(input).onConflictDoNothing({ target: reports.idempotencyKey });
+    },
+    async createWithCooldown(input, cooldownSeconds) {
+      return db.transaction(async (tx) => {
+        const lockKey = `${input.clientId}:${input.building}:${input.floor}:${input.category}`;
+        await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`);
+
+        const existing = await tx.query.reports.findFirst({
+          where: eq(reports.idempotencyKey, input.idempotencyKey),
+        });
+        if (existing) return { created: false, retryAfterSeconds: 0 };
+
+        const latest = await tx.query.reports.findFirst({
+          where: and(
+            eq(reports.clientId, input.clientId),
+            eq(reports.building, input.building),
+            eq(reports.floor, input.floor),
+            eq(reports.category, input.category),
+          ),
+          orderBy: [desc(reports.createdAt)],
+        });
+        const retryAfterSeconds = latest
+          ? Math.ceil(cooldownSeconds - (Date.now() - latest.createdAt.getTime()) / 1000)
+          : 0;
+        if (retryAfterSeconds > 0) return { created: false, retryAfterSeconds };
+
+        await tx.insert(reports).values(input);
+        return { created: true, retryAfterSeconds: 0 };
+      });
     },
     async findSummary(bathroom, since, expiresAt) {
       const location = and(

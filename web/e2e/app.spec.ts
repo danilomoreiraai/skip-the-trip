@@ -1,6 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("skip-the-trip:analytics-consent:v1", "accepted");
+  });
   const reports = new Map<
     string,
     {
@@ -91,24 +94,26 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
     page.getByRole("button", { name: "No, unavailable" }),
   ).toBeDisabled();
   await expect(page.getByText("Safe trip")).toBeVisible();
-  await page.getByRole("button", { name: "No, unavailable" }).click();
-  await expect(page.getByText("Unavailable")).toBeVisible();
+  await expect(page.getByText(/Vote again in/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "No, unavailable" }),
+  ).toBeDisabled();
   await expect(page.getByRole("status", { name: "1 YES votes" })).toHaveText(
     "1",
   );
-  await expect(page.getByRole("status", { name: "1 NO votes" })).toHaveText(
-    "1",
+  await expect(page.getByRole("status", { name: "0 NO votes" })).toHaveText(
+    "0",
   );
   await expect(page.locator(".status-bar")).toHaveCount(1);
-  await expect(page.getByRole("meter")).toHaveAttribute("value", "50");
+  await expect(page.getByRole("meter")).toHaveAttribute("value", "100");
   await page.reload();
-  await expect(page.getByRole("meter")).toHaveAttribute("value", "50");
+  await expect(page.getByRole("meter")).toHaveAttribute("value", "100");
   await expect(page.locator(".status-bar")).toHaveCount(1);
-  await expect(page.getByText("Unavailable")).toBeVisible();
+  await expect(page.getByText("Safe trip")).toBeVisible();
   await page.getByRole("button", { name: "Male", exact: true }).click();
   await expect(page.getByText("No recent information")).toBeVisible();
   await page.getByRole("button", { name: "Accessible", exact: true }).click();
-  await expect(page.getByText("Unavailable")).toBeVisible();
+  await expect(page.getByText("Safe trip")).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -147,12 +152,12 @@ test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
   ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
-    page.getByRole("button", { name: "HH1", exact: true }),
+    page.getByRole("button", { name: "HH5", exact: true }),
   ).toBeFocused();
-  await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("button", { name: "HH1", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("button", { name: /HH1.*Available soon/ }),
+  ).toBeDisabled();
+  await expect(page.getByText("Available soon").first()).toBeVisible();
   await page.getByRole("link", { name: "Privacy", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Privacy, kept simple." }),
@@ -163,6 +168,21 @@ test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to the app" }).click();
   await expect(
-    page.getByRole("button", { name: "HH1", exact: true }),
-  ).toHaveAttribute("aria-pressed", "true");
+    page.getByRole("button", { name: "HH5", exact: true }),
+  ).toBeEnabled();
+});
+
+test("asks for analytics consent and respects decline", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() =>
+    localStorage.removeItem("skip-the-trip:analytics-consent:v1"),
+  );
+  await page.reload();
+  await expect(page.getByRole("dialog")).toContainText(
+    "This site uses Google Analytics to count visits. It shows no ads and does not follow you to other sites. Is that okay?",
+  );
+  await page.getByRole("button", { name: "Decline", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });

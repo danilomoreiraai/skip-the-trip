@@ -10,3 +10,9 @@ export const reportSummarySchema = getReportQuerySchema.extend({
   noCount: z.number().int().nonnegative(),
   expiresAt: z.date().nullable(),
 });
+
+export const voteCooldownErrorSchema = z.object({
+  message: z.string(),
+  retryAfterSeconds: z.number().int().positive(),
+  statusCode: z.literal(429),
+});

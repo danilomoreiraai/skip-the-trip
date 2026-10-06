@@ -10,7 +10,10 @@ import { registerMetrics } from "./plugins/metrics.js";
 import { registerReportRoutes } from "./routes/reports.js";
 
 type AppOptions = {
-  config: Pick<Env, "CORS_ORIGIN" | "LOG_LEVEL" | "REPORT_WINDOW_MINUTES">;
+  config: Pick<
+    Env,
+    "CORS_ORIGIN" | "LOG_LEVEL" | "REPORT_WINDOW_MINUTES" | "VOTE_COOLDOWN_SECONDS"
+  >;
   reportsRepository: ReportsRepository;
   captureException?: (error: unknown, context: { requestId: string; route: string }) => void;
 };
@@ -36,6 +39,11 @@ export async function buildApp({ config, reportsRepository, captureException }: 
     }
   });
 
-  registerReportRoutes(app, reportsRepository, config.REPORT_WINDOW_MINUTES);
+  registerReportRoutes(
+    app,
+    reportsRepository,
+    config.REPORT_WINDOW_MINUTES,
+    config.VOTE_COOLDOWN_SECONDS,
+  );
   return app;
 }

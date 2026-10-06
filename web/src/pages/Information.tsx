@@ -1,6 +1,14 @@
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-export function Privacy() {
+import type { AnalyticsConsent } from "../lib/analytics";
+
+export function Privacy({
+  consent,
+  onConsentChange,
+}: {
+  consent: AnalyticsConsent | null;
+  onConsentChange: (consent: AnalyticsConsent) => void;
+}) {
   return (
     <main className="document-card">
       <Link className="back-link" to="/">
@@ -20,13 +28,29 @@ export function Privacy() {
         Your current building, floor and bathroom selection is also kept in
         session storage on this device.
       </p>
-      <h2>No accounts or behavioral tracking</h2>
+      <h2>No accounts or advertising tracking</h2>
       <p>
-        This prototype has no login, advertising pixels, session recording or
-        tracking cookies. A configured production deployment may send technical
-        error and performance diagnostics to its observability provider. These
-        diagnostics exclude your bathroom selection and vote location.
+        This site has no login, advertising pixels or session recording. With
+        your permission, Google Analytics counts visits without advertising
+        features or cross-site tracking. A configured deployment may also send
+        technical error and performance diagnostics to its observability
+        provider. These diagnostics exclude your bathroom selection and vote
+        location.
       </p>
+      <h2>Analytics preference</h2>
+      <p>
+        Current choice: <strong>{consent ?? "not selected"}</strong>. You can
+        change it at any time.
+      </p>
+      <fieldset className="privacy-actions">
+        <legend className="sr-only">Analytics preference</legend>
+        <button type="button" onClick={() => onConsentChange("accepted")}>
+          Accept analytics
+        </button>
+        <button type="button" onClick={() => onConsentChange("declined")}>
+          Decline analytics
+        </button>
+      </fieldset>
       <h2>Removing your data</h2>
       <p>
         You can remove the anonymous installation ID and current selection

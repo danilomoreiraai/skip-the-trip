@@ -14,7 +14,10 @@ const apiReportSchema = bathroomSchema.extend({
   noCount: z.number().int().nonnegative(),
   expiresAt: z.string().datetime().nullable(),
 });
-const apiErrorSchema = z.object({ message: z.string() });
+const apiErrorSchema = z.object({
+  message: z.string(),
+  retryAfterSeconds: z.number().int().positive().optional(),
+});
 let memoryClientId: string | undefined;
 
 async function fetchWithNetworkRetry(input: string, init: RequestInit) {
@@ -36,6 +39,12 @@ async function parseResponse(response: Response) {
   const payload: unknown = await response.json();
   if (!response.ok) {
     const error = apiErrorSchema.safeParse(payload);
+    if (error.success && error.data.retryAfterSeconds) {
+      throw new VoteCooldownError(
+        error.data.message,
+        error.data.retryAfterSeconds,
+      );
+    }
     throw new Error(
       error.success
         ? error.data.message
@@ -43,6 +52,16 @@ async function parseResponse(response: Response) {
     );
   }
   return apiReportSchema.parse(payload);
+}
+
+export class VoteCooldownError extends Error {
+  readonly retryAfterSeconds: number;
+
+  constructor(message: string, retryAfterSeconds: number) {
+    super(message);
+    this.name = "VoteCooldownError";
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
 }
 
 function toReport(report: z.infer<typeof apiReportSchema>): Report | null {
@@ -125,7 +144,10 @@ export async function submitReport(
 export function loadSelection(): Partial<Bathroom> {
   try {
     const raw = sessionStorage.getItem(SELECTION_KEY);
-    return raw ? bathroomSchema.partial().parse(JSON.parse(raw)) : {};
+    const selection = raw
+      ? bathroomSchema.partial().parse(JSON.parse(raw))
+      : {};
+    return selection.building && selection.building !== "HH5" ? {} : selection;
   } catch {
     return {};
   }

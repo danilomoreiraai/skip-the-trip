@@ -56,6 +56,8 @@ Drizzle PostgreSQL adapter
 - The reports repository is the persistence seam used by production and tests.
 - An idempotency key prevents a network retry from counting the same vote twice.
 - Only reports inside `REPORT_WINDOW_MINUTES` contribute to the returned status.
+- Repeated votes from the same installation and bathroom are rejected for
+  `VOTE_COOLDOWN_SECONDS` (300 seconds by default).
 - R2, links, slugs, redirects and CSV export are deliberately absent.
 
 ## Next backend increment

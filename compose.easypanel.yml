@@ -24,6 +24,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REPORT_WINDOW_MINUTES: ${REPORT_WINDOW_MINUTES:-30}
       REPORT_RETENTION_DAYS: ${REPORT_RETENTION_DAYS:-30}
+      VOTE_COOLDOWN_SECONDS: ${VOTE_COOLDOWN_SECONDS:-300}
       SENTRY_DSN: ${GLITCHTIP_SERVER_DSN:-}
       SENTRY_ENVIRONMENT: production
       SENTRY_RELEASE: ${APP_RELEASE:?Set APP_RELEASE}
@@ -50,6 +51,7 @@ services:
         VITE_APP_ENV: production
         VITE_RELEASE: ${APP_RELEASE:?Set APP_RELEASE}
         VITE_SENTRY_DSN: ${GLITCHTIP_WEB_DSN:-}
+        VITE_GOOGLE_ANALYTICS_ID: ${GOOGLE_ANALYTICS_ID:-}
     depends_on:
       server:
         condition: service_healthy

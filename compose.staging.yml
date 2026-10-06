@@ -39,6 +39,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REPORT_WINDOW_MINUTES: ${REPORT_WINDOW_MINUTES:-30}
       REPORT_RETENTION_DAYS: ${REPORT_RETENTION_DAYS:-30}
+      VOTE_COOLDOWN_SECONDS: ${VOTE_COOLDOWN_SECONDS:-300}
       SENTRY_DSN: ${GLITCHTIP_SERVER_DSN:-}
       SENTRY_ENVIRONMENT: staging
       SENTRY_RELEASE: ${APP_RELEASE:-local}
@@ -62,6 +63,7 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/skip_the_trip
       REPORT_RETENTION_DAYS: ${REPORT_RETENTION_DAYS:-30}
+      VOTE_COOLDOWN_SECONDS: ${VOTE_COOLDOWN_SECONDS:-300}
     command: ["npm", "run", "db:retention:prod"]
     depends_on:
       db:
@@ -141,6 +143,7 @@ services:
         VITE_APP_ENV: staging
         VITE_RELEASE: ${APP_RELEASE:-local}
         VITE_SENTRY_DSN: ${GLITCHTIP_WEB_DSN:-}
+        VITE_GOOGLE_ANALYTICS_ID: ${GOOGLE_ANALYTICS_ID:-}
     depends_on:
       server:
         condition: service_healthy

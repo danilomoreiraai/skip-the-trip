@@ -78,6 +78,24 @@ describe("PostgreSQL reports repository", () => {
     expect(summary).toMatchObject({ available: true, yesCount: 1, noCount: 0 });
   });
 
+  it("serializes simultaneous votes from the same device and bathroom", async () => {
+    const clientId = randomUUID();
+    const results = await Promise.all([
+      repository.createWithCooldown(vote({ clientId }), 300),
+      repository.createWithCooldown(vote({ clientId, available: false }), 300),
+    ]);
+
+    expect(results.filter((result) => result.created)).toHaveLength(1);
+    expect(results.filter((result) => result.retryAfterSeconds > 0)).toHaveLength(1);
+
+    const summary = await repository.findSummary(
+      bathroom,
+      new Date(0),
+      (reportedAt) => new Date(reportedAt.getTime() + 30 * 60_000),
+    );
+    expect(summary.yesCount + summary.noCount).toBe(1);
+  });
+
   it("excludes votes outside the requested freshness window", async () => {
     await repository.create(vote());
 

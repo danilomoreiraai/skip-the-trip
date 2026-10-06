@@ -102,6 +102,11 @@ docker compose --env-file .env.staging -f compose.staging.yml \
 In a hosted environment, schedule that command daily. Reports older than
 `REPORT_RETENTION_DAYS` are removed; the default is 30 days.
 
+`VOTE_COOLDOWN_SECONDS` defaults to 300 seconds and limits repeated votes from
+the same installation for the same bathroom. Set `GOOGLE_ANALYTICS_ID` to a
+Google Analytics measurement ID such as `G-XXXXXXXXXX`; the web app loads it
+only after the visitor accepts the analytics prompt.
+
 ## Operate
 
 ```sh

@@ -208,8 +208,12 @@ describe("reports API service", () => {
 
 describe("selection persistence", () => {
   it("loads and saves a valid partial selection", () => {
+    saveSelection({ building: "HH5", floor: "1" });
+    expect(loadSelection()).toEqual({ building: "HH5", floor: "1" });
+  });
+  it("clears a persisted selection for an unavailable building", () => {
     saveSelection({ building: "HH2", floor: "1" });
-    expect(loadSelection()).toEqual({ building: "HH2", floor: "1" });
+    expect(loadSelection()).toEqual({});
   });
   it("recovers from invalid or blocked selection storage", () => {
     sessionStorage.setItem("skip-the-trip:selection", "{broken");

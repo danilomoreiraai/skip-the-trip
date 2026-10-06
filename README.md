@@ -46,14 +46,16 @@ npm run test:e2e
 
 ## Behavior
 
-Choose HH1–HH5, G/1/2/3 and Male/Accessible/Female. Each combination represents one demonstration bathroom. The latest Yes/No report wins and expires after 30 minutes, including while the page remains open. No report means unknown, never assumed available. Votes are shared through the API; session storage preserves the selection across reloads. Changing a building or floor resets downstream selections.
+HH5 is currently available for interaction; HH1–HH4 are visible as `Available soon` while their bathroom layouts are cataloged. For HH5, choose G/1/2/3 and Male/Accessible/Female. The latest Yes/No report wins and expires after 30 minutes, including while the page remains open. No report means unknown, never assumed available. Votes are shared through the API; session storage preserves the selection across reloads. Changing a building or floor resets downstream selections. A device must wait five minutes before voting on the same bathroom again.
 
 Reports are validated with Zod and stored by the API in PostgreSQL. An anonymous
 installation ID is stored under `skip-the-trip:client-id:v1`; it is not an
-account. The selected location remains in session storage. There are no cookies
-or remote fonts. Optional Sentry error reporting and OpenTelemetry tracing are
-disabled unless explicitly configured. `/privacy` describes the prototype;
-unknown routes display a 404.
+account. The selected location remains in session storage. There are no remote
+fonts. Optional Google Analytics visit counting is loaded only after explicit
+consent and is disabled when `VITE_GOOGLE_ANALYTICS_ID` is absent. Optional
+Sentry error reporting and OpenTelemetry tracing are disabled unless explicitly
+configured. `/privacy` describes the site and lets visitors change their
+analytics preference; unknown routes display a 404.
 
 `web/src/domain` owns freshness and location rules, `web/src/services` owns API
 access, and `web/src/components` contains reusable controls. Reports refresh
@@ -72,5 +74,5 @@ migration procedure and post-deploy smoke test.
 Before a functional release: confirm the real catalog, user identity and
 duplicate-vote policy, add PostgreSQL integration tests, server-side
 OpenTelemetry, dashboards and alerts, and confirm organization/contact
-information and privacy requirements. Analytics, session replay and advertising
-require a separately agreed consent design.
+information and privacy requirements. Session replay and advertising require a
+separately agreed consent design.

@@ -12,7 +12,16 @@ import {
   buildings,
   categories,
   floors,
+  isBuildingAvailable,
 } from "./domain/bathroom";
+import { env } from "./env";
+import {
+  type AnalyticsConsent,
+  getAnalyticsConsent,
+  initializeGoogleAnalytics,
+  setAnalyticsConsent,
+  trackPageView,
+} from "./lib/analytics";
 import { motionTokens, springs } from "./lib/motion";
 import { observability } from "./lib/observability";
 import {
@@ -20,6 +29,7 @@ import {
   loadSelection,
   saveSelection,
   submitReport,
+  VoteCooldownError,
 } from "./services/reports";
 
 const Privacy = lazy(() =>
@@ -47,6 +57,7 @@ function Home() {
   const [selection, setSelection] = useState<Partial<Bathroom>>(loadSelection);
   const [now, setNow] = useState(Date.now);
   const [toast, setToast] = useState("");
+  const [voteCooldownUntil, setVoteCooldownUntil] = useState(0);
   const client = useQueryClient();
   const parsed = bathroomSchema.safeParse(selection);
   const bathroom = parsed.success ? parsed.data : null;
@@ -74,6 +85,7 @@ function Home() {
     onSuccess: (report, variables) => {
       client.setQueryData(["report", bathroomKey(variables.location)], report);
       setNow(Date.now());
+      setVoteCooldownUntil(Date.now() + 5 * 60_000);
       observability.trackEvent("report.submitted", {
         "report.available": variables.available,
       });
@@ -81,7 +93,14 @@ function Home() {
     },
     onError: (error) => {
       observability.captureException(error, { operation: "submit-report" });
-      setToast("Could not save your update. Please try again.");
+      if (error instanceof VoteCooldownError) {
+        setVoteCooldownUntil(Date.now() + error.retryAfterSeconds * 1000);
+        setToast(
+          `Please wait ${error.retryAfterSeconds}s before voting again.`,
+        );
+      } else {
+        setToast("Could not save your update. Please try again.");
+      }
     },
   });
   useEffect(() => {
@@ -145,6 +164,10 @@ function Home() {
           options={buildings}
           value={selection.building}
           disabled={mutation.isPending}
+          isOptionDisabled={(building) => !isBuildingAvailable(building)}
+          getOptionHint={(building) =>
+            isBuildingAvailable(building) ? undefined : "Available soon"
+          }
           onChange={(building) => changeSelection({ building })}
         />
         <Selector
@@ -174,7 +197,8 @@ function Home() {
                 !bathroom ||
                 query.isPending ||
                 query.isError ||
-                mutation.isPending
+                mutation.isPending ||
+                now < voteCooldownUntil
               }
               onClick={() => {
                 if (bathroom)
@@ -204,7 +228,8 @@ function Home() {
                 !bathroom ||
                 query.isPending ||
                 query.isError ||
-                mutation.isPending
+                mutation.isPending ||
+                now < voteCooldownUntil
               }
               onClick={() => {
                 if (bathroom)
@@ -227,6 +252,11 @@ function Home() {
               )}
             </Button>
           </div>
+          {bathroom && now < voteCooldownUntil && (
+            <p className="cooldown-note" role="status">
+              Vote again in {Math.ceil((voteCooldownUntil - now) / 1000)}s
+            </p>
+          )}
           <StatusPanel
             bathroom={bathroom}
             report={query.data}
@@ -245,6 +275,21 @@ function Home() {
 }
 export function App() {
   const location = useLocation();
+  const [analyticsConsent, setConsent] = useState<AnalyticsConsent | null>(
+    getAnalyticsConsent,
+  );
+  const changeAnalyticsConsent = (consent: AnalyticsConsent) => {
+    setAnalyticsConsent(consent);
+    setConsent(consent);
+  };
+  useEffect(() => {
+    initializeGoogleAnalytics(analyticsConsent, env.VITE_GOOGLE_ANALYTICS_ID);
+    trackPageView(
+      analyticsConsent,
+      env.VITE_GOOGLE_ANALYTICS_ID,
+      `${location.pathname}${location.search}`,
+    );
+  }, [analyticsConsent, location.pathname, location.search]);
   return (
     <div className="experience" data-theme="signal-core">
       <div className="ambient ambient-one" aria-hidden="true" />
@@ -265,7 +310,15 @@ export function App() {
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<Home />} />
-              <Route path="/privacy" element={<Privacy />} />
+              <Route
+                path="/privacy"
+                element={
+                  <Privacy
+                    consent={analyticsConsent}
+                    onConsentChange={changeAnalyticsConsent}
+                  />
+                }
+              />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AnimatePresence>
@@ -275,6 +328,33 @@ export function App() {
           <Link to="/privacy">Privacy</Link>
         </footer>
       </m.div>
+      {analyticsConsent === null && (
+        <section
+          className="consent-popup"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="analytics-consent-title"
+        >
+          <p id="analytics-consent-title">
+            This site uses Google Analytics to count visits. It shows no ads and
+            does not follow you to other sites. Is that okay?
+          </p>
+          <div>
+            <button
+              type="button"
+              onClick={() => changeAnalyticsConsent("accepted")}
+            >
+              Accept
+            </button>
+            <button
+              type="button"
+              onClick={() => changeAnalyticsConsent("declined")}
+            >
+              Decline
+            </button>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
