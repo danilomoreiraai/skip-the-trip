@@ -28,8 +28,8 @@
     "@opentelemetry/semantic-conventions": "^1.43.0",
     "@sentry/react": "^11.4.0",
     "@tailwindcss/vite": "^4.3.3",
-    "@tanstack/react-query": "^5.104.0",
-    "lucide-react": "^1.48.0",
+    "@tanstack/react-query": "^5.104.1",
+    "lucide-react": "^1.52.0",
     "motion": "^13.4.4",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -38,7 +38,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.14",
+    "@biomejs/biome": "^2.5.15",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
     "@playwright/test": "^1.63.0",
@@ -52,7 +52,7 @@
     "dependency-cruiser": "^18.5.0",
     "knip": "^6.39.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
+    "vite": "^8.3.2",
     "vitest": "^4.1.10"
   },
   "overrides": {
