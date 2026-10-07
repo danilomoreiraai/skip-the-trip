@@ -31,10 +31,13 @@ import {
 } from "./lib/vote-cooldown";
 import {
   getReport,
+  LocationVerificationError,
+  LocationVerificationRequiredError,
   loadSelection,
   saveSelection,
   submitReport,
   VoteCooldownError,
+  verifyLocation,
 } from "./services/reports";
 
 const Privacy = lazy(() =>
@@ -63,6 +66,12 @@ function Home() {
   const [now, setNow] = useState(Date.now);
   const [toast, setToast] = useState("");
   const [voteCooldowns, setVoteCooldowns] = useState<VoteCooldowns>({});
+  const [pendingVote, setPendingVote] = useState<{
+    location: Bathroom;
+    available: boolean;
+    idempotencyKey: string;
+  } | null>(null);
+  const [verifyingLocation, setVerifyingLocation] = useState(false);
   const client = useQueryClient();
   const parsed = bathroomSchema.safeParse(selection);
   const bathroom = parsed.success ? parsed.data : null;
@@ -84,10 +93,12 @@ function Home() {
     mutationFn: ({
       location,
       available,
+      idempotencyKey,
     }: {
       location: Bathroom;
       available: boolean;
-    }) => submitReport(location, available),
+      idempotencyKey: string;
+    }) => submitReport(location, available, idempotencyKey),
     onSuccess: (report, variables) => {
       client.setQueryData(["report", bathroomKey(variables.location)], report);
       setNow(Date.now());
@@ -98,10 +109,13 @@ function Home() {
         "report.available": variables.available,
       });
       setToast("Thanks! Your update helps the next person.");
+      setPendingVote(null);
     },
     onError: (error, variables) => {
       observability.captureException(error, { operation: "submit-report" });
-      if (error instanceof VoteCooldownError) {
+      if (error instanceof LocationVerificationRequiredError) {
+        setPendingVote(variables);
+      } else if (error instanceof VoteCooldownError) {
         setVoteCooldowns((current) =>
           withVoteCooldown(
             current,
@@ -117,6 +131,48 @@ function Home() {
       }
     },
   });
+  const requestLocationAndVote = async () => {
+    if (!pendingVote) return;
+    setVerifyingLocation(true);
+    try {
+      const position = await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10_000,
+          });
+        },
+      );
+      await verifyLocation("HH5", position.coords);
+      mutation.mutate(pendingVote);
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        typeof error.code === "number"
+      ) {
+        setToast(
+          error.code === 1
+            ? "Allow location access to vote. You can continue viewing bathroom statuses."
+            : "We could not retrieve your location. Try again.",
+        );
+      } else if (error instanceof LocationVerificationError) {
+        setToast(error.message);
+      } else {
+        setToast("We could not confirm your location. Try again.");
+      }
+    } finally {
+      setVerifyingLocation(false);
+    }
+  };
+  const vote = (location: Bathroom, available: boolean) =>
+    mutation.mutate({
+      location,
+      available,
+      idempotencyKey: crypto.randomUUID(),
+    });
   useEffect(() => {
     saveSelection(selection);
   }, [selection]);
@@ -215,8 +271,7 @@ function Home() {
                 now < voteCooldownUntil
               }
               onClick={() => {
-                if (bathroom)
-                  mutation.mutate({ location: bathroom, available: true });
+                if (bathroom) vote(bathroom, true);
               }}
             >
               {mutation.isPending && mutation.variables.available ? (
@@ -246,8 +301,7 @@ function Home() {
                 now < voteCooldownUntil
               }
               onClick={() => {
-                if (bathroom)
-                  mutation.mutate({ location: bathroom, available: false });
+                if (bathroom) vote(bathroom, false);
               }}
             >
               {mutation.isPending && !mutation.variables.available ? (
@@ -284,6 +338,38 @@ function Home() {
         </div>
       </section>
       {toast && <Toast message={toast} onClose={() => setToast("")} />}
+      {pendingVote && (
+        <section
+          className="location-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="location-dialog-title"
+        >
+          <h2 id="location-dialog-title">Confirm your location to vote</h2>
+          <p>
+            We discard your coordinates after verification. Verification lasts 4
+            hours.
+          </p>
+          <div>
+            <button
+              type="button"
+              disabled={verifyingLocation}
+              onClick={() => void requestLocationAndVote()}
+            >
+              {verifyingLocation
+                ? "Confirming your location…"
+                : "Confirm location"}
+            </button>
+            <button
+              type="button"
+              disabled={verifyingLocation}
+              onClick={() => setPendingVote(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </section>
+      )}
     </m.main>
   );
 }

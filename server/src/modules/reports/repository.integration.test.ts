@@ -4,24 +4,31 @@ import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import * as schema from "../../db/schema.js";
-import type { CreateReportInput } from "../../domain/reports.js";
-import { createReportsRepository } from "./repository.js";
+import type { AuthorizedReportInput } from "../../domain/reports.js";
+import { createLocationAuthorizationsRepository } from "../location-authorizations/repository.js";
+import {
+  createReportsRepository,
+  IdempotencyConflictError,
+} from "./repository.js";
 
 const connectionString = process.env.TEST_DATABASE_URL;
-if (!connectionString) {
-  throw new Error("TEST_DATABASE_URL is required for PostgreSQL integration tests");
-}
-
+if (!connectionString)
+  throw new Error(
+    "TEST_DATABASE_URL is required for PostgreSQL integration tests",
+  );
 const pool = new Pool({ connectionString });
 const db = drizzle(pool, { schema });
 const repository = createReportsRepository(db);
-const bathroom = { building: "HH1", floor: "G", category: "Male" } as const;
+const authorizations = createLocationAuthorizationsRepository(db);
+const bathroom = { building: "HH5", floor: "G", category: "Male" } as const;
 
-function vote(overrides: Partial<CreateReportInput> = {}): CreateReportInput {
+function vote(
+  overrides: Partial<AuthorizedReportInput> = {},
+): AuthorizedReportInput {
   return {
     ...bathroom,
     available: true,
-    clientId: randomUUID(),
+    anonymousId: randomUUID(),
     idempotencyKey: randomUUID(),
     ...overrides,
   };
@@ -30,101 +37,104 @@ function vote(overrides: Partial<CreateReportInput> = {}): CreateReportInput {
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "drizzle" });
 });
-
 beforeEach(async () => {
-  await pool.query("truncate table reports restart identity");
+  await pool.query(
+    "truncate table reports, active_votes, location_authorizations restart identity",
+  );
 });
-
 afterAll(async () => {
   await pool.end();
 });
 
 describe("PostgreSQL reports repository", () => {
-  it("persists votes and returns the latest state with aggregate counts", async () => {
-    await repository.create(vote({ available: true }));
-    await repository.create(vote({ available: false }));
-
+  it("keeps one active contribution per identity and updates its status after cooldown", async () => {
+    const anonymousId = randomUUID();
+    const first = new Date("2026-10-07T10:00:00.000Z");
+    await repository.createWithCooldown(vote({ anonymousId }), 300, 30, first);
+    await repository.createWithCooldown(
+      vote({ anonymousId, available: false }),
+      300,
+      30,
+      new Date("2026-10-07T10:05:00.000Z"),
+    );
     const summary = await repository.findSummary(
       bathroom,
-      new Date(0),
-      (reportedAt) => new Date(reportedAt.getTime() + 30 * 60_000),
+      new Date("2026-10-07T10:05:01.000Z"),
     );
-
     expect(summary).toMatchObject({
-      ...bathroom,
       available: false,
-      yesCount: 1,
+      yesCount: 0,
       noCount: 1,
     });
-    expect(summary.reportedAt).toBeInstanceOf(Date);
-    const reportedAt = summary.reportedAt;
-    if (!reportedAt) throw new Error("Expected the latest report timestamp");
-    expect(summary.expiresAt?.getTime()).toBe(
-      reportedAt.getTime() + 30 * 60_000,
-    );
+    expect(summary.expiresAt).toEqual(new Date("2026-10-07T10:35:00.000Z"));
   });
 
-  it("counts an idempotent retry only once", async () => {
-    const retriedVote = vote();
-    await repository.create(retriedVote);
-    await repository.create(retriedVote);
-
-    const summary = await repository.findSummary(
-      bathroom,
-      new Date(0),
-      (reportedAt) => new Date(reportedAt.getTime() + 30 * 60_000),
-    );
-
-    expect(summary).toMatchObject({ available: true, yesCount: 1, noCount: 0 });
-  });
-
-  it("serializes simultaneous votes from the same device and bathroom", async () => {
-    const clientId = randomUUID();
-    const results = await Promise.all([
-      repository.createWithCooldown(vote({ clientId }), 300),
-      repository.createWithCooldown(vote({ clientId, available: false }), 300),
+  it("serializes simultaneous votes and preserves idempotent retries", async () => {
+    const input = vote();
+    const competing = { ...input, idempotencyKey: randomUUID() };
+    const [first, second] = await Promise.all([
+      repository.createWithCooldown(input, 300, 30),
+      repository.createWithCooldown(competing, 300, 30),
     ]);
-
-    expect(results.filter((result) => result.created)).toHaveLength(1);
-    expect(results.filter((result) => result.retryAfterSeconds > 0)).toHaveLength(1);
-
-    const summary = await repository.findSummary(
-      bathroom,
-      new Date(0),
-      (reportedAt) => new Date(reportedAt.getTime() + 30 * 60_000),
+    expect([first, second].filter((result) => result.created)).toHaveLength(1);
+    const retry = await repository.createWithCooldown(
+      first.created ? input : competing,
+      300,
+      30,
     );
-    expect(summary.yesCount + summary.noCount).toBe(1);
+    expect(retry).toEqual({ created: false, retryAfterSeconds: 0 });
   });
 
-  it("excludes votes outside the requested freshness window", async () => {
-    await repository.create(vote());
-
-    const summary = await repository.findSummary(
-      bathroom,
-      new Date(Date.now() + 60_000),
-      (reportedAt) => new Date(reportedAt.getTime() + 30 * 60_000),
-    );
-
-    expect(summary).toEqual({
-      ...bathroom,
-      available: null,
-      reportedAt: null,
-      yesCount: 0,
-      noCount: 0,
-      expiresAt: null,
-    });
+  it("rejects incompatible reuse of an idempotency key", async () => {
+    const input = vote();
+    await repository.createWithCooldown(input, 300, 30);
+    await expect(
+      repository.createWithCooldown({ ...input, available: false }, 300, 30),
+    ).rejects.toBeInstanceOf(IdempotencyConflictError);
   });
 
-  it("deletes reports older than the retention cutoff", async () => {
-    await repository.create(vote());
-    expect(await repository.deleteExpired(new Date(Date.now() + 60_000))).toBe(1);
-
+  it("excludes expired votes without waiting for physical cleanup", async () => {
+    await repository.createWithCooldown(
+      vote(),
+      300,
+      30,
+      new Date("2026-10-07T10:00:00.000Z"),
+    );
     const summary = await repository.findSummary(
       bathroom,
-      new Date(0),
-      (reportedAt) => new Date(reportedAt.getTime() + 30 * 60_000),
+      new Date("2026-10-07T10:30:00.000Z"),
     );
-    expect(summary.available).toBeNull();
-    expect(summary.yesCount).toBe(0);
+    expect(summary).toMatchObject({ available: null, yesCount: 0, noCount: 0 });
+  });
+});
+
+describe("PostgreSQL location authorization repository", () => {
+  it("reuses a valid authorization without extending it and replaces an expired one", async () => {
+    const anonymousId = randomUUID();
+    const first = {
+      verifiedAt: new Date("2026-10-07T10:00:00.000Z"),
+      expiresAt: new Date("2026-10-07T14:00:00.000Z"),
+    };
+    await authorizations.authorize(anonymousId, "HH5", first, first.verifiedAt);
+    const reused = await authorizations.authorize(
+      anonymousId,
+      "HH5",
+      {
+        verifiedAt: new Date("2026-10-07T11:00:00.000Z"),
+        expiresAt: new Date("2026-10-07T15:00:00.000Z"),
+      },
+      new Date("2026-10-07T11:00:00.000Z"),
+    );
+    expect(reused).toEqual(first);
+    const renewed = await authorizations.authorize(
+      anonymousId,
+      "HH5",
+      {
+        verifiedAt: new Date("2026-10-07T14:00:00.000Z"),
+        expiresAt: new Date("2026-10-07T18:00:00.000Z"),
+      },
+      new Date("2026-10-07T14:00:00.000Z"),
+    );
+    expect(renewed.expiresAt).toEqual(new Date("2026-10-07T18:00:00.000Z"));
   });
 });

@@ -23,10 +23,17 @@ export function Privacy({
       </p>
       <h2>What stays on this device</h2>
       <p>
-        Your Yes/No report, bathroom location, anonymous installation ID and
+        Your Yes/No report, bathroom selection, anonymous browser identifier and
         timestamp are sent to the Skip The Trip API and stored in its database.
         Your current building, floor and bathroom selection is also kept in
         session storage on this device.
+      </p>
+      <h2>Location verification</h2>
+      <p>
+        Location is requested only when you choose to vote. The API checks
+        whether you are near HH5 and discards the coordinates immediately after
+        that check. It stores only the result and a four-hour authorization
+        period. Location verification is separate from your analytics choice.
       </p>
       <h2>No accounts or advertising tracking</h2>
       <p>
@@ -53,11 +60,10 @@ export function Privacy({
       </fieldset>
       <h2>Removing your data</h2>
       <p>
-        You can remove the anonymous installation ID and current selection
+        You can remove the anonymous browser identifier and current selection
         through your browser’s site settings. Closing the tab ends the selection
         session. A report stops determining availability after 30 minutes, but
-        server-side retention and deletion rules still need to be finalized
-        before a public release.
+        server-side retention rules remove expired operational records.
       </p>
       <h2>Before a public release</h2>
       <p>

@@ -14,6 +14,7 @@ export function isBuildingAvailable(building: (typeof buildings)[number]) {
 const reportSchema = z.object({
   available: z.boolean(),
   reportedAt: z.number().finite().nonnegative(),
+  expiresAt: z.number().finite().nonnegative(),
   yesCount: z.number().int().nonnegative().optional(),
   noCount: z.number().int().nonnegative().optional(),
 });
@@ -23,12 +24,11 @@ export function bathroomKey(bathroom: Bathroom) {
   return `${bathroom.building}:${bathroom.floor}:${bathroom.category}`;
 }
 export function isRecent(
-  report: Pick<Report, "available" | "reportedAt"> | null | undefined,
+  report:
+    | Pick<Report, "available" | "reportedAt" | "expiresAt">
+    | null
+    | undefined,
   now = Date.now(),
 ) {
-  return Boolean(
-    report &&
-      report.reportedAt <= now &&
-      now - report.reportedAt < REPORT_LIFETIME,
-  );
+  return Boolean(report && report.reportedAt <= now && now < report.expiresAt);
 }

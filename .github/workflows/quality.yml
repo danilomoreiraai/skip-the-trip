@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    - cron: "0 6 * * 3"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -43,6 +46,12 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
       - run: npm run check
+      - uses: codecov/codecov-action@v5
+        with:
+          directory: server/coverage
+          fail_ci_if_error: true
+          flags: server
+          token: ${{ secrets.CODECOV_TOKEN }}
       - run: npm run test:integration
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
@@ -105,6 +114,7 @@ jobs:
         with:
           directory: web/coverage
           fail_ci_if_error: true
+          flags: web
           token: ${{ secrets.CODECOV_TOKEN }}
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e

@@ -1,11 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Bathroom } from "../domain/bathroom";
 import {
-  CLIENT_ID_KEY,
   getReport,
+  type LocationVerificationError,
+  LocationVerificationRequiredError,
   loadSelection,
   saveSelection,
   submitReport,
+  type VoteCooldownError,
+  verifyLocation,
 } from "./reports";
 
 const location: Bathroom = { building: "HH1", floor: "G", category: "Male" };
@@ -51,6 +54,7 @@ describe("reports API service", () => {
     await expect(getReport(location)).resolves.toEqual({
       available: true,
       reportedAt: 1_791_117_000_000,
+      expiresAt: 1_791_118_800_000,
       yesCount: 3,
       noCount: 1,
     });
@@ -77,7 +81,7 @@ describe("reports API service", () => {
     await expect(getReport(location)).resolves.toBeNull();
   });
 
-  it("submits an anonymous idempotent vote using a persistent client id", async () => {
+  it("submits a cookie-authenticated idempotent vote", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (_url: string, init?: RequestInit) => {
@@ -95,7 +99,9 @@ describe("reports API service", () => {
         );
       }),
     );
-    await expect(submitReport(location, true)).resolves.toMatchObject({
+    await expect(
+      submitReport(location, true, "550e8400-e29b-41d4-a716-446655440009"),
+    ).resolves.toMatchObject({
       available: true,
       yesCount: 1,
     });
@@ -104,38 +110,94 @@ describe("reports API service", () => {
     expect(JSON.parse(String(request[1]?.body))).toEqual({
       ...location,
       available: true,
-      clientId: "550e8400-e29b-41d4-a716-446655440000",
-      idempotencyKey: "550e8400-e29b-41d4-a716-446655440000",
+      idempotencyKey: "550e8400-e29b-41d4-a716-446655440009",
     });
-    expect(localStorage.getItem(CLIENT_ID_KEY)).toBe(
-      "550e8400-e29b-41d4-a716-446655440000",
+    expect(request[1]).toMatchObject({ credentials: "include" });
+  });
+
+  it("surfaces the location-verification requirement", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response(
+          {
+            code: "LOCATION_VERIFICATION_REQUIRED",
+            message: "Confirm your location to vote.",
+          },
+          403,
+        ),
+      ),
+    );
+    await expect(submitReport(location, true)).rejects.toBeInstanceOf(
+      LocationVerificationRequiredError,
     );
   });
 
-  it("reuses a valid client id already stored by the installation", async () => {
-    vi.resetModules();
-    localStorage.setItem(CLIENT_ID_KEY, "550e8400-e29b-41d4-a716-446655440009");
-    const service = await import("./reports");
+  it("maps cooldown and structured authorization errors", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (_url: string, init?: RequestInit) => {
-        const body = JSON.parse(String(init?.body));
-        return response(
-          {
-            ...location,
-            available: body.available,
-            reportedAt: "2026-10-04T12:30:00.000Z",
-            expiresAt: "2026-10-04T13:00:00.000Z",
-            yesCount: 1,
-            noCount: 0,
-          },
-          201,
-        );
-      }),
+      vi.fn(async () =>
+        response({ message: "Wait", retryAfterSeconds: 42 }, 429),
+      ),
     );
-    await service.submitReport(location, true);
-    const body = JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body));
-    expect(body.clientId).toBe("550e8400-e29b-41d4-a716-446655440009");
+    await expect(submitReport(location, true)).rejects.toMatchObject({
+      name: "VoteCooldownError",
+      retryAfterSeconds: 42,
+    } satisfies Partial<VoteCooldownError>);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response({ code: "OUTSIDE_ALLOWED_AREA", message: "Outside" }, 403),
+      ),
+    );
+    await expect(submitReport(location, true)).rejects.toMatchObject({
+      name: "LocationVerificationError",
+      code: "OUTSIDE_ALLOWED_AREA",
+    } satisfies Partial<LocationVerificationError>);
+  });
+
+  it("sends a location reading without retaining it locally", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response({ authorized: true, expiresAt: "2026-10-07T14:00:00.000Z" }),
+      ),
+    );
+    await verifyLocation("HH5", {
+      latitude: 51.907327,
+      longitude: -8.513503,
+      accuracy: 20,
+    } as GeolocationCoordinates);
+    expect(JSON.parse(String(vi.mocked(fetch).mock.calls[0][1]?.body))).toEqual(
+      { latitude: 51.907327, longitude: -8.513503, accuracy: 20 },
+    );
+  });
+
+  it("maps location verification failures without exposing coordinates", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        response({ code: "INSUFFICIENT_ACCURACY", message: "Try again" }, 403),
+      ),
+    );
+    await expect(
+      verifyLocation("HH5", {
+        latitude: 1,
+        longitude: 2,
+        accuracy: 300,
+      } as GeolocationCoordinates),
+    ).rejects.toMatchObject({ code: "INSUFFICIENT_ACCURACY" });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => response({ problem: "unknown" }, 502)),
+    );
+    await expect(
+      verifyLocation("HH5", {
+        latitude: 1,
+        longitude: 2,
+        accuracy: 20,
+      } as GeolocationCoordinates),
+    ).rejects.toThrow("Request failed (502)");
   });
 
   it("reuses the idempotency key when a network failure is retried", async () => {

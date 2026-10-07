@@ -23,6 +23,15 @@ proxy.
 node scripts/smoke-staging.mjs
 ```
 
+For a temporary location profile, pass the same configured center to the smoke
+test without committing or logging a device's real reading:
+
+```sh
+SMOKE_LOCATION_LATITUDE=51.8533617 \
+SMOKE_LOCATION_LONGITUDE=-8.3037587 \
+node scripts/smoke-staging.mjs
+```
+
 For a remote deployment:
 
 ```sh

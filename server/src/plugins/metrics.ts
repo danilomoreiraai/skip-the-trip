@@ -1,6 +1,6 @@
 import {
-  collectDefaultMetrics,
   Counter,
+  collectDefaultMetrics,
   Gauge,
   Histogram,
   Registry,

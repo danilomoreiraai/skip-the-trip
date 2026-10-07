@@ -13,12 +13,12 @@ export const bathroomSchema = z.object({
 export const getReportQuerySchema = bathroomSchema;
 export const createReportBodySchema = bathroomSchema.extend({
   available: z.boolean(),
-  clientId: z.string().uuid(),
   idempotencyKey: z.string().uuid(),
 });
 
 export type Bathroom = z.infer<typeof bathroomSchema>;
 export type CreateReportInput = z.infer<typeof createReportBodySchema>;
+export type AuthorizedReportInput = CreateReportInput & { anonymousId: string };
 
 export type ReportSummary = Bathroom & {
   available: boolean | null;

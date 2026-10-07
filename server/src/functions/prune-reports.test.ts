@@ -6,7 +6,6 @@ describe("report retention", () => {
     const deleteExpired = vi.fn(async () => 4);
     const deleted = await pruneReports(
       {
-        create: vi.fn(),
         createWithCooldown: vi.fn(),
         findSummary: vi.fn(),
         deleteExpired,

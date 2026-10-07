@@ -3,7 +3,38 @@ import { expect, type Page, test } from "@playwright/test";
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("skip-the-trip:analytics-consent:v1", "accepted");
+    Object.defineProperty(navigator, "geolocation", {
+      value: {
+        getCurrentPosition(success: PositionCallback) {
+          success({
+            coords: {
+              latitude: 51.907327,
+              longitude: -8.513503,
+              accuracy: 20,
+              altitude: null,
+              altitudeAccuracy: null,
+              heading: null,
+              speed: null,
+            },
+            timestamp: Date.now(),
+          } as GeolocationPosition);
+        },
+      },
+    });
   });
+  let authorized = false;
+  await page.route(
+    "http://localhost:3333/locations/HH5/verify-location",
+    async (route) => {
+      authorized = true;
+      await route.fulfill({
+        json: {
+          authorized: true,
+          expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
+        },
+      });
+    },
+  );
   const reports = new Map<
     string,
     {
@@ -17,6 +48,17 @@ test.beforeEach(async ({ page }) => {
     const request = route.request();
     const url = new URL(request.url());
     if (request.method() === "POST") {
+      if (!authorized) {
+        await route.fulfill({
+          status: 403,
+          json: {
+            code: "LOCATION_VERIFICATION_REQUIRED",
+            message: "Confirm your location to vote.",
+            statusCode: 403,
+          },
+        });
+        return;
+      }
       await new Promise((resolve) => setTimeout(resolve, 100));
       const vote = request.postDataJSON() as {
         building: string;
@@ -81,6 +123,12 @@ async function select(page: Page) {
   await page.getByRole("button", { name: "3", exact: true }).click();
   await page.getByRole("button", { name: "Accessible", exact: true }).click();
 }
+async function authorizePendingVote(page: Page) {
+  await expect(
+    page.getByRole("dialog", { name: "Confirm your location to vote" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Confirm location" }).click();
+}
 test("selection, latest vote, isolation and persistence", async ({ page }) => {
   await page.goto("/");
   await expect(
@@ -92,6 +140,7 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
   await select(page);
   await expect(page.getByText("No recent information")).toBeVisible();
   await page.getByRole("button", { name: "Yes, available" }).click();
+  await authorizePendingVote(page);
   await expect(
     page.getByRole("button", { name: "No, unavailable" }),
   ).toBeDisabled();
@@ -141,6 +190,7 @@ test("expires while the page stays open", async ({ page }) => {
   await page.goto("/");
   await select(page);
   await page.getByRole("button", { name: "Yes, available" }).click();
+  await authorizePendingVote(page);
   await expect(page.getByText("Safe trip")).toBeVisible();
   await page.clock.fastForward(30 * 60 * 1000 + 1000);
   await expect(page.getByText("No recent information")).toBeVisible();
@@ -190,9 +240,12 @@ test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
 
 test("asks for analytics consent and respects decline", async ({ page }) => {
   await page.goto("/");
-  await page.evaluate(() =>
-    localStorage.removeItem("skip-the-trip:analytics-consent:v1"),
-  );
+  await page.addInitScript(() => {
+    if (!sessionStorage.getItem("analytics-test-cleared")) {
+      localStorage.removeItem("skip-the-trip:analytics-consent:v1");
+      sessionStorage.setItem("analytics-test-cleared", "yes");
+    }
+  });
   await page.reload();
   await expect(page.getByRole("dialog")).toContainText(
     "This site uses Google Analytics to count visits. It shows no ads and does not follow you to other sites. Is that okay?",

@@ -1,16 +1,24 @@
-import type { CreateReportInput, ReportSummary } from "../domain/reports.js";
+import type {
+  AuthorizedReportInput,
+  ReportSummary,
+} from "../domain/reports.js";
 import type { ReportsRepository } from "../modules/reports/repository.js";
 import { getReport } from "./get-report.js";
 
 export async function createReport(
   repository: ReportsRepository,
-  input: CreateReportInput,
+  input: AuthorizedReportInput,
   windowMinutes: number,
   cooldownSeconds: number,
 ): Promise<ReportSummary> {
-  const result = await repository.createWithCooldown(input, cooldownSeconds);
-  if (result.retryAfterSeconds > 0) throw new VoteCooldownError(result.retryAfterSeconds);
-  return getReport(repository, input, windowMinutes);
+  const result = await repository.createWithCooldown(
+    input,
+    cooldownSeconds,
+    windowMinutes,
+  );
+  if (result.retryAfterSeconds > 0)
+    throw new VoteCooldownError(result.retryAfterSeconds);
+  return getReport(repository, input);
 }
 
 export class VoteCooldownError extends Error {

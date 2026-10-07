@@ -1,12 +1,23 @@
 import type { FastifyInstance } from "fastify";
-import { hasZodFastifySchemaValidationErrors, isResponseSerializationError } from "fastify-type-provider-zod";
+import {
+  hasZodFastifySchemaValidationErrors,
+  isResponseSerializationError,
+} from "fastify-type-provider-zod";
 
-type CaptureException = (error: unknown, context: { requestId: string; route: string }) => void;
+type CaptureException = (
+  error: unknown,
+  context: { requestId: string; route: string },
+) => void;
 
-export function registerErrorHandler(app: FastifyInstance, captureException?: CaptureException) {
+export function registerErrorHandler(
+  app: FastifyInstance,
+  captureException?: CaptureException,
+) {
   app.setErrorHandler((error, request, reply) => {
     if (hasZodFastifySchemaValidationErrors(error)) {
-      return reply.status(400).send({ message: "Invalid request", statusCode: 400 });
+      return reply
+        .status(400)
+        .send({ message: "Invalid request", statusCode: 400 });
     }
     if (isResponseSerializationError(error)) {
       request.log.error({ err: error }, "Response serialization failed");
@@ -14,7 +25,9 @@ export function registerErrorHandler(app: FastifyInstance, captureException?: Ca
         requestId: request.id,
         route: request.routeOptions.url ?? "unknown",
       });
-      return reply.status(500).send({ message: "Internal server error", statusCode: 500 });
+      return reply
+        .status(500)
+        .send({ message: "Internal server error", statusCode: 500 });
     }
     const candidateStatus =
       typeof error === "object" &&

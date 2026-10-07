@@ -12,19 +12,37 @@ describe("report freshness", () => {
   it("expires exactly at 30 minutes", () => {
     expect(
       isRecent(
-        { available: true, reportedAt },
+        {
+          available: true,
+          reportedAt,
+          expiresAt: reportedAt + REPORT_LIFETIME,
+        },
         reportedAt + REPORT_LIFETIME - 1,
       ),
     ).toBe(true);
     expect(
-      isRecent({ available: true, reportedAt }, reportedAt + REPORT_LIFETIME),
+      isRecent(
+        {
+          available: true,
+          reportedAt,
+          expiresAt: reportedAt + REPORT_LIFETIME,
+        },
+        reportedAt + REPORT_LIFETIME,
+      ),
     ).toBe(false);
   });
   it("rejects missing and future reports", () => {
     expect(isRecent(null)).toBe(false);
-    expect(isRecent({ available: false, reportedAt }, reportedAt - 1)).toBe(
-      false,
-    );
+    expect(
+      isRecent(
+        {
+          available: false,
+          reportedAt,
+          expiresAt: reportedAt + REPORT_LIFETIME,
+        },
+        reportedAt - 1,
+      ),
+    ).toBe(false);
   });
   it("isolates location and validates catalog", () => {
     expect(

@@ -24,6 +24,12 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 .brand-dots i { width:7px;height:7px;border-radius:50%;background:var(--positive); }
 .brand-dots i:nth-child(2){background:var(--accent)}.brand-dots i:nth-child(3){background:var(--negative)}
 .product-intro { margin-bottom:18px;border-left:8px solid var(--accent);padding-left:12px; }
+.location-dialog { position:fixed;inset:auto 16px 24px;z-index:20;max-width:420px;margin:auto;padding:20px;background:var(--paper);border:2px solid var(--ink);box-shadow:6px 6px 0 var(--ink); }
+.location-dialog h2 { margin:0 0 8px;font-size:20px; }
+.location-dialog p { margin:0 0 16px;color:var(--muted);font-size:13px; }
+.location-dialog div { display:flex;gap:10px; }
+.location-dialog button { min-height:44px;padding:10px 14px;border:2px solid var(--ink);background:var(--accent);font-weight:800; }
+.location-dialog button:last-child { background:var(--paper); }
 .product-intro .eyebrow,.document-card .eyebrow { font-size:9px;font-weight:900;letter-spacing:.15em;text-transform:uppercase;color:var(--accent); }
 .product-intro h1 { margin:5px 0 3px;font-size:clamp(24px,8vw,38px);line-height:.98;letter-spacing:-.055em; }
 .product-intro p { margin:0;font-size:12px;color:var(--muted); }

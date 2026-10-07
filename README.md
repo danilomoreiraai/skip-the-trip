@@ -46,11 +46,12 @@ npm run test:e2e
 
 ## Behavior
 
-HH5 is currently available for interaction; HH1–HH4 are visible as `Available soon` while their bathroom layouts are cataloged. For HH5, choose G/1/2/3 and Male/Accessible/Female. The latest Yes/No report wins and expires after 30 minutes, including while the page remains open. No report means unknown, never assumed available. Votes are shared through the API; session storage preserves the selection across reloads. Changing a building or floor resets downstream selections. A device must wait five minutes before voting on the same bathroom again.
+HH5 is currently available for interaction; HH1–HH4 are visible as `Available soon` while their bathroom layouts are cataloged. For HH5, choose G/1/2/3 and Male/Accessible/Female. Viewing is public; the first contribution requires server-approved proximity to HH5 and grants a fixed four-hour authorization. Each anonymous browser contributes at most one active vote per bathroom. Updating that vote after the five-minute cooldown restarts its 30-minute lifetime. No report means unknown, never assumed available.
 
 Reports are validated with Zod and stored by the API in PostgreSQL. An anonymous
-installation ID is stored under `skip-the-trip:client-id:v1`; it is not an
-account. The selected location remains in session storage. There are no remote
+identifier is issued in an `HttpOnly` cookie; it is not an account. Exact
+coordinates are discarded after proximity verification. The selected bathroom
+remains in session storage. There are no remote
 fonts. Optional Google Analytics visit counting is loaded only after explicit
 consent and is disabled when `VITE_GOOGLE_ANALYTICS_ID` is absent. Optional
 Sentry error reporting and OpenTelemetry tracing are disabled unless explicitly

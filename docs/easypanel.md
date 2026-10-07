@@ -28,6 +28,10 @@ every placeholder. `APP_DOMAIN` is a hostname only, without `https://` or a
 trailing slash. Keep the GlitchTip DSNs and database URL in EasyPanel; never
 commit the populated values.
 
+The checked-in example currently points to the temporary physical-test center
+in Cobh. Restore the official HH5 coordinates after the on-site test; the
+application image does not need to change when only these values change.
+
 ## 4. Domain and TLS
 
 After the Compose deployment is healthy, add a domain to the Compose service:
