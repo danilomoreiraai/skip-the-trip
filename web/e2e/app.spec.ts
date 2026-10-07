@@ -185,6 +185,55 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
     ),
   ).toBe(true);
 });
+
+test("shows location rejection above an opaque mobile dialog", async ({
+  page,
+}) => {
+  await page.route(
+    "http://localhost:3333/locations/HH5/verify-location",
+    async (route) => {
+      await route.fulfill({
+        status: 403,
+        json: {
+          code: "INSUFFICIENT_ACCURACY",
+          message:
+            "We could not confirm your location accurately enough. Try again.",
+          statusCode: 403,
+        },
+      });
+    },
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await select(page);
+  await page.getByRole("button", { name: "Yes, available" }).click();
+  await authorizePendingVote(page);
+
+  const dialog = page.getByRole("dialog", {
+    name: "Confirm your location to vote",
+  });
+  const toast = page.getByRole("status").filter({
+    hasText: "We could not confirm your location accurately enough.",
+  });
+  await expect(dialog).toBeVisible();
+  await expect(toast).toBeVisible();
+  await expect
+    .poll(async () => {
+      const toastZIndex = Number(
+        await toast.evaluate((node) => getComputedStyle(node).zIndex),
+      );
+      const dialogZIndex = Number(
+        await dialog.evaluate((node) => getComputedStyle(node).zIndex),
+      );
+      return toastZIndex > dialogZIndex;
+    })
+    .toBe(true);
+  await expect
+    .poll(() =>
+      dialog.evaluate((node) => getComputedStyle(node).backgroundColor),
+    )
+    .not.toBe("rgba(0, 0, 0, 0)");
+});
 test("expires while the page stays open", async ({ page }) => {
   await page.clock.install();
   await page.goto("/");
