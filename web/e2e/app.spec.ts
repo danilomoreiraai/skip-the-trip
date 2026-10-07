@@ -3,9 +3,27 @@ import { expect, type Page, test } from "@playwright/test";
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem("skip-the-trip:analytics-consent:v1", "accepted");
+    let geolocationAttempts = 0;
     Object.defineProperty(navigator, "geolocation", {
       value: {
-        getCurrentPosition(success: PositionCallback) {
+        getCurrentPosition(
+          success: PositionCallback,
+          error?: PositionErrorCallback | null,
+        ) {
+          geolocationAttempts += 1;
+          if (
+            window.location.search.includes("geo-retry") &&
+            geolocationAttempts === 1
+          ) {
+            error?.({
+              code: 2,
+              message: "Position unavailable",
+              PERMISSION_DENIED: 1,
+              POSITION_UNAVAILABLE: 2,
+              TIMEOUT: 3,
+            });
+            return;
+          }
           success({
             coords: {
               latitude: 51.907327,
@@ -233,6 +251,22 @@ test("shows location rejection above an opaque mobile dialog", async ({
       dialog.evaluate((node) => getComputedStyle(node).backgroundColor),
     )
     .not.toBe("rgba(0, 0, 0, 0)");
+});
+
+test("retries with network location when high accuracy is unavailable", async ({
+  page,
+}) => {
+  await page.goto("/?geo-retry=1");
+  await select(page);
+  await page.getByRole("button", { name: "Yes, available" }).click();
+  await authorizePendingVote(page);
+
+  await expect(
+    page.getByRole("dialog", { name: "Confirm your location to vote" }),
+  ).toBeHidden();
+  await expect(page.getByRole("status", { name: "1 YES votes" })).toHaveText(
+    "1",
+  );
 });
 test("expires while the page stays open", async ({ page }) => {
   await page.clock.install();

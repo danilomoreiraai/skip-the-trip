@@ -135,15 +135,32 @@ function Home() {
     if (!pendingVote) return;
     setVerifyingLocation(true);
     try {
-      const position = await new Promise<GeolocationPosition>(
-        (resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10_000,
-          });
-        },
-      );
+      const getPosition = (options: PositionOptions) =>
+        new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, options);
+        });
+      let position: GeolocationPosition;
+      try {
+        position = await getPosition({
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10_000,
+        });
+      } catch (error) {
+        if (
+          typeof error !== "object" ||
+          error === null ||
+          !("code" in error) ||
+          error.code === 1
+        ) {
+          throw error;
+        }
+        position = await getPosition({
+          enableHighAccuracy: false,
+          maximumAge: 60_000,
+          timeout: 20_000,
+        });
+      }
       await verifyLocation("HH5", position.coords);
       mutation.mutate(pendingVote);
     } catch (error) {
