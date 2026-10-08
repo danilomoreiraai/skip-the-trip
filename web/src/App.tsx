@@ -85,7 +85,7 @@ function Home() {
     },
     enabled: Boolean(bathroom),
     retry: false,
-    refetchInterval: bathroom ? 15_000 : false,
+    refetchInterval: bathroom ? 5_000 : false,
     refetchOnReconnect: true,
     refetchOnWindowFocus: true,
   });
@@ -306,7 +306,6 @@ function Home() {
                 </span>
               )}
             </Button>
-            <span className="vote-indicator" aria-hidden="true" />
             <Button
               className="vote-no"
               aria-label="No, unavailable"

@@ -268,6 +268,44 @@ test("retries with network location when high accuracy is unavailable", async ({
     "1",
   );
 });
+
+test("refreshes an open counter when a third person votes", async ({
+  page,
+}) => {
+  let reads = 0;
+  await page.route(
+    "http://localhost:3333/reports?building=HH5&floor=G&category=Male",
+    async (route) => {
+      reads += 1;
+      await route.fulfill({
+        json: {
+          building: "HH5",
+          floor: "G",
+          category: "Male",
+          available: true,
+          reportedAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          yesCount: reads === 1 ? 2 : 3,
+          noCount: 0,
+        },
+      });
+    },
+  );
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "HH5", exact: true })
+    .click({ force: true });
+  await page.getByRole("button", { name: "G", exact: true }).click();
+  await page.getByRole("button", { name: "Male", exact: true }).click();
+
+  await expect(page.getByRole("status", { name: "2 YES votes" })).toHaveText(
+    "2",
+  );
+  await expect(page.getByRole("status", { name: "3 YES votes" })).toHaveText(
+    "3",
+    { timeout: 7_000 },
+  );
+});
 test("expires while the page stays open", async ({ page }) => {
   await page.clock.install();
   await page.goto("/");

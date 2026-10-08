@@ -47,6 +47,17 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL reports repository", () => {
+  it("counts three independent active identities for the same bathroom", async () => {
+    const now = new Date("2026-10-08T10:00:00.000Z");
+    await repository.createWithCooldown(vote(), 300, 30, now);
+    await repository.createWithCooldown(vote(), 300, 30, now);
+    await repository.createWithCooldown(vote(), 300, 30, now);
+
+    const summary = await repository.findSummary(bathroom, now);
+
+    expect(summary).toMatchObject({ yesCount: 3, noCount: 0 });
+  });
+
   it("keeps one active contribution per identity and updates its status after cooldown", async () => {
     const anonymousId = randomUUID();
     const first = new Date("2026-10-07T10:00:00.000Z");
