@@ -147,6 +147,26 @@ async function authorizePendingVote(page: Page) {
   ).toBeVisible();
   await page.getByRole("button", { name: "Confirm location" }).click();
 }
+
+test("keeps the vote controls visually separated", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await select(page);
+
+  const yesBox = await page
+    .getByRole("button", { name: "Yes, available" })
+    .boundingBox();
+  const noBox = await page
+    .getByRole("button", { name: "No, unavailable" })
+    .boundingBox();
+
+  expect(yesBox).not.toBeNull();
+  expect(noBox).not.toBeNull();
+  expect(
+    (noBox?.x ?? 0) - ((yesBox?.x ?? 0) + (yesBox?.width ?? 0)),
+  ).toBeGreaterThanOrEqual(32);
+});
+
 test("selection, latest vote, isolation and persistence", async ({ page }) => {
   await page.goto("/");
   await expect(
