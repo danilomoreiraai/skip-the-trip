@@ -60,7 +60,7 @@ analytics preference; unknown routes display a 404.
 
 `web/src/domain` owns freshness and location rules, `web/src/services` owns API
 access, and `web/src/components` contains reusable controls. Reports refresh
-every 15 seconds while a bathroom is selected and when the page regains focus
+every 5 seconds while a bathroom is selected and when the page regains focus
 or connectivity. Vite deployments must rewrite SPA routes to `index.html`.
 
 ## Architecture and operations
@@ -70,10 +70,22 @@ See [`docs/architecture.md`](docs/architecture.md) for module seams, dependency 
 See [`docs/staging.md`](docs/staging.md) for the containerized staging stack,
 migration procedure and post-deploy smoke test.
 
-## Next phase
+## Tracked follow-up work
 
-Before a functional release: confirm the real catalog, user identity and
-duplicate-vote policy, add PostgreSQL integration tests, server-side
-OpenTelemetry, dashboards and alerts, and confirm organization/contact
-information and privacy requirements. Session replay and advertising require a
-separately agreed consent design.
+The current release includes PostgreSQL persistence and integration tests,
+anonymous per-browser voting, per-bathroom cooldowns, HH5 geolocation
+authorization, privacy-safe geolocation failure metrics, a provisioned Grafana
+dashboard, Prometheus alert rules and staging smoke tests.
+
+Remaining work is tracked in GitHub: production Analytics configuration
+([#1](https://github.com/danilomoreiraai/skip-the-trip/issues/1)), database
+backups ([#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19)),
+retention scheduling
+([#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20)), alert
+delivery and incident runbooks
+([#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21)), production
+privacy ownership
+([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)) and
+server-side trace propagation
+([#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23)). Session
+replay and advertising remain outside the approved scope.

@@ -37,8 +37,13 @@ payloads are never attached to error events.
 
 Browser tracing is useful for user-visible operations, but it is not a substitute
 for server telemetry. Fastify emits structured logs and request IDs, exposes RED
-and process metrics at `/metrics`, and checks database readiness. Database spans,
-dashboards and SLO alerts remain future work.
+and process metrics at `/metrics`, and checks database readiness. Prometheus and
+Grafana are provisioned with API health, latency, error, database and privacy-safe
+geolocation failure panels. Alert rules exist; production delivery and response
+runbooks are tracked in
+[#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21). Server and
+database trace propagation is tracked in
+[#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23).
 
 ## Backend module seams
 
@@ -60,13 +65,16 @@ Drizzle PostgreSQL adapter
   `VOTE_COOLDOWN_SECONDS` (300 seconds by default).
 - R2, links, slugs, redirects and CSV export are deliberately absent.
 
-## Next backend increment
+## Operational backlog
 
-1. Confirm the anonymous-client and duplicate-vote policy with the product owner.
-2. Add PostgreSQL integration tests and run the full stack in staging.
-3. Propagate W3C trace context from browser to server.
-4. Add dashboards, alerts, rollback and incident runbooks.
-5. Schedule the implemented retention job in the hosting platform.
+The anonymous identity and duplicate-vote policy, PostgreSQL integration suite,
+containerized staging stack, dashboards and alert rules are implemented. The
+remaining backend and operational work is intentionally issue-driven:
+
+1. [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19) — verify encrypted production backups and restoration.
+2. [#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20) — schedule and monitor the implemented retention job.
+3. [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21) — configure alert delivery and incident runbooks.
+4. [#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23) — add server tracing and W3C trace propagation.
 
 ## Quality gates
 

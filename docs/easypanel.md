@@ -59,6 +59,11 @@ Then create a GlitchTip GET uptime monitor for
 
 ## 6. Backups and retention
 
+Production completion and restore evidence are tracked in
+[#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19); automated
+retention scheduling is tracked in
+[#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20).
+
 Add a remote storage provider in EasyPanel and configure a daily logical backup
 for `skip_the_trip`. Run one manual backup and test a restore into non-production
 data before relying on the schedule.

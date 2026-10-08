@@ -137,6 +137,8 @@ docker compose --env-file .env.staging -f compose.staging.yml down
 ```
 
 Do not add `-v` to `down` unless deleting the staging database is intentional.
-Backups, TLS, managed secrets, alert notification delivery and automated
-retention scheduling remain required before this topology is used as
-production.
+Production follow-ups are tracked explicitly: backups and restore verification
+in [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19), automated
+retention in [#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20),
+and alert delivery plus incident runbooks in
+[#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21).

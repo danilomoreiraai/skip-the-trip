@@ -69,10 +69,12 @@ export function Privacy({
         session. A report stops determining availability after 30 minutes, but
         server-side retention rules remove expired operational records.
       </p>
-      <h2>Before a public release</h2>
+      <h2>Before wider public promotion</h2>
       <p>
-        A production privacy policy, responsible organization and contact
-        channel will be defined before collecting or sharing any real user data.
+        The responsible organization, monitored contact channel and final
+        production privacy policy are being completed before wider public
+        promotion. This governance work is tracked separately from the
+        application’s technical privacy controls.
       </p>
     </main>
   );
