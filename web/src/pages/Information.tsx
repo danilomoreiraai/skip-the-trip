@@ -34,6 +34,10 @@ export function Privacy({
         whether you are near HH5 and discards the coordinates immediately after
         that check. It stores only the result and a four-hour authorization
         period. Location verification is separate from your analytics choice.
+        When verification fails, the service counts only a predefined failure
+        category and whether the app is running in a browser or as an installed
+        web app. It does not send coordinates, free-form error messages or a
+        browser identifier with this monitoring event.
       </p>
       <h2>No accounts or advertising tracking</h2>
       <p>

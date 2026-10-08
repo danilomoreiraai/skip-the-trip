@@ -7,6 +7,7 @@ import {
 } from "@prometheus-io/client";
 import type { FastifyInstance } from "fastify";
 import type { ReportsRepository } from "../modules/reports/repository.js";
+import { geolocationFailureEventSchema } from "../schemas/client-events.js";
 
 export function registerMetrics(
   app: FastifyInstance,
@@ -27,6 +28,12 @@ export function registerMetrics(
     help: "HTTP request duration in seconds",
     labelNames: ["method", "route", "status_code"] as const,
     buckets: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5],
+    registers: [registry],
+  });
+  const geolocationFailures = new Counter({
+    name: "skip_the_trip_geolocation_failures_total",
+    help: "Privacy-safe client geolocation failures grouped by category and browser context",
+    labelNames: ["category", "context"] as const,
     registers: [registry],
   });
   new Gauge({
@@ -61,4 +68,13 @@ export function registerMetrics(
       .header("content-type", registry.contentType)
       .send(await registry.metrics());
   });
+  app.post(
+    "/client-events/geolocation",
+    { schema: { body: geolocationFailureEventSchema } },
+    async (request, reply) => {
+      const event = geolocationFailureEventSchema.parse(request.body);
+      geolocationFailures.inc(event);
+      return reply.status(204).send();
+    },
+  );
 }

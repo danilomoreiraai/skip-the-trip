@@ -250,4 +250,42 @@ describe("location-authorized reports", () => {
     expect(metrics.body).toContain("skip_the_trip_database_ready");
     await app.close();
   });
+
+  it("aggregates privacy-safe geolocation failure categories without accepting coordinates", async () => {
+    const app = await testApp();
+    const categories = [
+      "permission_denied",
+      "position_unavailable",
+      "timeout",
+      "insufficient_accuracy",
+      "outside_allowed_area",
+      "network_failure",
+      "authorization_cookie_failure",
+      "unexpected",
+    ] as const;
+    for (const category of categories) {
+      const response = await app.inject({
+        method: "POST",
+        url: "/client-events/geolocation",
+        payload: { category, context: "browser" },
+      });
+      expect(response.statusCode).toBe(204);
+    }
+    const rejected = await app.inject({
+      method: "POST",
+      url: "/client-events/geolocation",
+      payload: {
+        category: "timeout",
+        context: "browser",
+        latitude: 51.9,
+      },
+    });
+    expect(rejected.statusCode).toBe(400);
+    const metrics = await app.inject({ method: "GET", url: "/metrics" });
+    for (const category of categories) {
+      expect(metrics.body).toContain(`category="${category}"`);
+    }
+    expect(metrics.body).not.toContain("51.9");
+    await app.close();
+  });
 });

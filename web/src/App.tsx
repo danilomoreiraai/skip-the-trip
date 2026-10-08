@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Accessibility } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { StatusPanel } from "./components/StatusPanel";
 import { AppSkeleton, Button, Selector, Spinner, Toast } from "./components/ui";
@@ -22,6 +22,10 @@ import {
   setAnalyticsConsent,
   trackPageView,
 } from "./lib/analytics";
+import {
+  type GeolocationFailureCategory,
+  reportGeolocationFailure,
+} from "./lib/geolocation-monitoring";
 import { motionTokens, springs } from "./lib/motion";
 import { observability } from "./lib/observability";
 import {
@@ -72,6 +76,7 @@ function Home() {
     idempotencyKey: string;
   } | null>(null);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
+  const locationJustVerified = useRef(false);
   const client = useQueryClient();
   const parsed = bathroomSchema.safeParse(selection);
   const bathroom = parsed.success ? parsed.data : null;
@@ -100,6 +105,7 @@ function Home() {
       idempotencyKey: string;
     }) => submitReport(location, available, idempotencyKey),
     onSuccess: (report, variables) => {
+      locationJustVerified.current = false;
       client.setQueryData(["report", bathroomKey(variables.location)], report);
       setNow(Date.now());
       setVoteCooldowns((current) =>
@@ -114,6 +120,10 @@ function Home() {
     onError: (error, variables) => {
       observability.captureException(error, { operation: "submit-report" });
       if (error instanceof LocationVerificationRequiredError) {
+        if (locationJustVerified.current) {
+          void reportGeolocationFailure("authorization_cookie_failure");
+        }
+        locationJustVerified.current = false;
         setPendingVote(variables);
       } else if (error instanceof VoteCooldownError) {
         setVoteCooldowns((current) =>
@@ -162,24 +172,41 @@ function Home() {
         });
       }
       await verifyLocation("HH5", position.coords);
+      locationJustVerified.current = true;
       mutation.mutate(pendingVote);
     } catch (error) {
+      locationJustVerified.current = false;
+      let failure: GeolocationFailureCategory = "unexpected";
       if (
         typeof error === "object" &&
         error !== null &&
         "code" in error &&
         typeof error.code === "number"
       ) {
+        failure =
+          error.code === 1
+            ? "permission_denied"
+            : error.code === 2
+              ? "position_unavailable"
+              : "timeout";
         setToast(
           error.code === 1
             ? "Allow location access to vote. You can continue viewing bathroom statuses."
             : "We could not retrieve your location. Try again.",
         );
       } else if (error instanceof LocationVerificationError) {
+        failure =
+          error.code === "INSUFFICIENT_ACCURACY"
+            ? "insufficient_accuracy"
+            : error.code === "OUTSIDE_ALLOWED_AREA"
+              ? "outside_allowed_area"
+              : "unexpected";
         setToast(error.message);
       } else {
+        if (error instanceof TypeError) failure = "network_failure";
         setToast("We could not confirm your location. Try again.");
       }
+      void reportGeolocationFailure(failure);
     } finally {
       setVerifyingLocation(false);
     }
