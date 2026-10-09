@@ -46,7 +46,7 @@ jobs:
           cache-dependency-path: server/package-lock.json
       - run: npm ci
       - run: npm run check
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           directory: server/coverage
           fail_ci_if_error: true
@@ -126,7 +126,7 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run test:coverage
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v7
         with:
           directory: web/coverage
           fail_ci_if_error: true
