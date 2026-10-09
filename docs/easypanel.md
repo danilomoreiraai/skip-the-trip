@@ -64,9 +64,9 @@ Production completion and restore evidence are tracked in
 retention scheduling is tracked in
 [#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20).
 
-Add a remote storage provider in EasyPanel and configure a daily logical backup
-for `skip_the_trip`. Run one manual backup and test a restore into non-production
-data before relying on the schedule.
+Follow the [production backup and recovery runbook](backup-recovery.md) to
+configure remote encrypted storage, a daily logical backup, failure detection,
+and an isolated restore drill. A successful upload is not restore evidence.
 
 Schedule the retention command daily in the hosting environment using the same
 server image and `DATABASE_URL`:
