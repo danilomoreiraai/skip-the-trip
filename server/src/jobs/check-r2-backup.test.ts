@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backupIsStale, parseLatestBackup } from "./check-r2-backup.js";
+import { backupIsStale, parseLatestBackup } from "../lib/backup-monitor.js";
 
 describe("R2 backup monitor", () => {
   it("selects the newest backup timestamp", () => {
