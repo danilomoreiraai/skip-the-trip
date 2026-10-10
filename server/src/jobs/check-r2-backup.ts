@@ -139,7 +139,8 @@ async function check(config: Config) {
 
 async function main() {
   const config = loadConfig();
-  const intervalMs = Number(process.env.BACKUP_CHECK_INTERVAL_SECONDS ?? "3600") * 1000;
+  const intervalMs =
+    Number(process.env.BACKUP_CHECK_INTERVAL_SECONDS ?? "3600") * 1000;
   if (!Number.isFinite(intervalMs) || intervalMs < 60_000) {
     throw new Error("BACKUP_CHECK_INTERVAL_SECONDS must be at least 60");
   }

@@ -13,11 +13,11 @@ describe("R2 backup monitor", () => {
   it("treats missing and older-than-threshold backups as stale", () => {
     const now = new Date("2026-10-10T05:00:00.000Z");
     expect(backupIsStale(null, now, 26)).toBe(true);
-    expect(
-      backupIsStale(new Date("2026-10-09T02:00:00.000Z"), now, 26),
-    ).toBe(true);
-    expect(
-      backupIsStale(new Date("2026-10-09T04:00:00.000Z"), now, 26),
-    ).toBe(false);
+    expect(backupIsStale(new Date("2026-10-09T02:00:00.000Z"), now, 26)).toBe(
+      true,
+    );
+    expect(backupIsStale(new Date("2026-10-09T04:00:00.000Z"), now, 26)).toBe(
+      false,
+    );
   });
 });
