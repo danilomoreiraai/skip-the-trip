@@ -65,7 +65,10 @@ docker compose --env-file .env.staging -f compose.staging.yml \
 
 Grafana provisions the Prometheus data source and the **Skip The Trip API
 Overview** dashboard automatically. Prometheus loads alerts for API
-availability, 5xx rate, p95 latency, database readiness and missing metrics.
+availability, 5xx rate, p95 latency, database readiness, missing metrics and
+geolocation failure anomalies. Alertmanager routes every rule to an isolated
+webhook receiver in staging; the smoke test sends a synthetic alert and verifies
+its acknowledgement.
 The `skip_the_trip_geolocation_failures_total` counter groups mobile location
 failures by the closed `category` and `context` labels. It contains no
 coordinates, identifiers or free-form messages and exists only for the
@@ -78,8 +81,8 @@ sum by (category, context) (
 )
 ```
 
-Notification delivery still requires a contact point such as email, Slack or
-PagerDuty.
+Production routing, ownership, thresholds and response procedures are defined
+in the [incident response runbook](incident-response.md).
 
 ## GlitchTip error tracking and uptime
 

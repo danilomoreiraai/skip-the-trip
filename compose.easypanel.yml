@@ -87,6 +87,67 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  alert-config:
+    image: node:24-alpine
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?Set TELEGRAM_CHAT_ID}
+    command: ["node", "/scripts/render-alertmanager-config.mjs"]
+    volumes:
+      - ./scripts:/scripts:ro
+      - alertmanager-config:/alertmanager/config
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.1
+    command:
+      - --config.file=/alertmanager/config/alertmanager.yml
+      - --storage.path=/alertmanager/data
+    volumes:
+      - alertmanager-config:/alertmanager/config:ro
+      - alertmanager-data:/alertmanager/data
+    depends_on:
+      alert-config:
+        condition: service_completed_successfully
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9093/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      server:
+        condition: service_healthy
+      alertmanager:
+        condition: service_healthy
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
   web:
     build:
       context: ./web
@@ -114,3 +175,8 @@ services:
 networks:
   easypanel:
     external: true
+
+volumes:
+  alertmanager-config:
+  alertmanager-data:
+  prometheus-data:

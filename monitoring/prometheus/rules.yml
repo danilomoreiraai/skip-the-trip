@@ -6,9 +6,11 @@ groups:
         for: 2m
         labels:
           severity: critical
+          owner: operations
         annotations:
           summary: Skip The Trip API is unavailable
           description: Prometheus has been unable to scrape the API for two minutes.
+          runbook_url: https://github.com/danilomoreiraai/skip-the-trip/blob/main/docs/incident-response.md#api-or-metrics-unavailable
 
       - alert: SkipTheTripHighErrorRate
         expr: |
@@ -19,9 +21,11 @@ groups:
         for: 5m
         labels:
           severity: warning
+          owner: operations
         annotations:
           summary: API 5xx rate is above 2%
           description: More than 2% of API requests returned 5xx responses over five minutes.
+          runbook_url: https://github.com/danilomoreiraai/skip-the-trip/blob/main/docs/incident-response.md#high-error-rate
 
       - alert: SkipTheTripHighLatency
         expr: |
@@ -32,23 +36,41 @@ groups:
         for: 5m
         labels:
           severity: warning
+          owner: operations
         annotations:
           summary: API p95 latency is above 500 ms
           description: The API p95 request latency exceeded 500 ms for five minutes.
+          runbook_url: https://github.com/danilomoreiraai/skip-the-trip/blob/main/docs/incident-response.md#high-latency
 
       - alert: SkipTheTripDatabaseUnavailable
         expr: skip_the_trip_database_ready == 0
         for: 2m
         labels:
           severity: critical
+          owner: operations
         annotations:
           summary: PostgreSQL readiness check is failing
           description: The API cannot reach the reports database.
+          runbook_url: https://github.com/danilomoreiraai/skip-the-trip/blob/main/docs/incident-response.md#database-unavailable
 
       - alert: SkipTheTripMetricsMissing
         expr: absent_over_time(up{job="skip-the-trip-api"}[5m]) == 1
         labels:
           severity: critical
+          owner: operations
         annotations:
           summary: API metrics have disappeared
           description: No target series has been recorded for the API in five minutes.
+          runbook_url: https://github.com/danilomoreiraai/skip-the-trip/blob/main/docs/incident-response.md#api-or-metrics-unavailable
+
+      - alert: SkipTheTripGeolocationFailureAnomaly
+        expr: |
+          sum(increase(skip_the_trip_geolocation_failures_total[15m])) > 20
+        for: 10m
+        labels:
+          severity: warning
+          owner: operations
+        annotations:
+          summary: Geolocation failures are unusually high
+          description: More than 20 privacy-safe geolocation failures were recorded in 15 minutes for at least 10 minutes.
+          runbook_url: https://github.com/danilomoreiraai/skip-the-trip/blob/main/docs/incident-response.md#geolocation-failure-anomaly

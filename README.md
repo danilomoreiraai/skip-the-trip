@@ -80,7 +80,7 @@ dashboard, Prometheus alert rules and staging smoke tests.
 Remaining work is tracked in GitHub: production Analytics configuration
 ([#1](https://github.com/danilomoreiraai/skip-the-trip/issues/1)), database
 backups ([#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19)),
-alert delivery and incident runbooks
+production alert delivery verification
 ([#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21)), production
 privacy ownership
 ([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)) and

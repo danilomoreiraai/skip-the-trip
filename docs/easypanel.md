@@ -77,6 +77,14 @@ the following values in the EasyPanel Compose environment:
   `3`).
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`: operational alert destination.
 
+The same Telegram destination is the owned contact point for Prometheus alerts.
+The production stack renders Alertmanager configuration from these secrets at
+deploy time; generated configuration remains in a private Docker volume and
+must never be copied into logs or the repository. Prometheus and Alertmanager
+are internal-only services with no public port. Follow the
+[incident response runbook](incident-response.md) for acknowledgement,
+escalation, controlled delivery testing, rollback and recovery verification.
+
 Each run writes one privacy-safe JSON event to the service log. Successful
 events contain `deleted` and `duration_ms`; failed events contain only duration,
 failure count, and error class. They never contain report records, locations,
