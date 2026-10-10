@@ -28,7 +28,7 @@ volume:
 | Schedule | `0 2 * * *` (server time) |
 | Retention | 30 backup files |
 | Destination | remote S3-compatible storage |
-| Path | `skip-the-trip/production/postgres` |
+| Path | `production/postgres` |
 
 The schedule provides a daily logical backup and the retention setting keeps
 approximately 30 days. Confirm the server timezone in EasyPanel and record its
@@ -100,9 +100,12 @@ database URL.
 
 ## Notifications and daily checks
 
-Configure an EasyPanel notification channel under **Settings → Notifications**
-for database backup events and send a test notification. The channel must reach
-the infrastructure owner and the operational escalation channel.
+The production deployment runs the `backup-monitor` service once per hour. It
+lists the private Cloudflare R2 prefix `production/postgres/` and sends a
+Telegram alert when the newest object is more than 26 hours old, the prefix is
+empty, or the R2 check fails. Healthy checks are silent. The monitor uses a
+dedicated Telegram bot and a bucket-scoped R2 object credential supplied only
+through EasyPanel environment variables.
 
 Because a completion notification alone may not detect a job that never ran,
 also create a daily check in the storage provider or monitoring system that
