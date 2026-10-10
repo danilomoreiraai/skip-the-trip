@@ -1,5 +1,5 @@
-import { createHash, createHmac } from "node:crypto";
-import { backupIsStale, parseLatestBackup } from "../lib/backup-monitor.js";
+import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
+import { backupIsStale } from "../lib/backup-monitor.js";
 
 type Config = {
   accountId: string;
@@ -11,12 +11,6 @@ type Config = {
   telegramBotToken: string;
   telegramChatId: string;
 };
-
-const hash = (value: string) =>
-  createHash("sha256").update(value).digest("hex");
-
-const hmac = (key: Buffer | string, value: string) =>
-  createHmac("sha256", key).update(value).digest();
 
 const required = (name: string) => {
   const value = process.env[name]?.trim();
@@ -41,52 +35,26 @@ function loadConfig(): Config {
   };
 }
 
-async function listBackups(config: Config, now: Date) {
-  const host = `${config.accountId}.r2.cloudflarestorage.com`;
-  const path = `/${config.bucket}`;
-  const query = `list-type=2&prefix=${encodeURIComponent(config.prefix)}`;
-  const amzDate = now.toISOString().replace(/[:-]|\.\d{3}/g, "");
-  const shortDate = amzDate.slice(0, 8);
-  const payloadHash = hash("");
-  const canonicalHeaders = `host:${host}\nx-amz-content-sha256:${payloadHash}\nx-amz-date:${amzDate}\n`;
-  const signedHeaders = "host;x-amz-content-sha256;x-amz-date";
-  const canonicalRequest = [
-    "GET",
-    path,
-    query,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join("\n");
-  const scope = `${shortDate}/auto/s3/aws4_request`;
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    scope,
-    hash(canonicalRequest),
-  ].join("\n");
-  const dateKey = hmac(`AWS4${config.secretAccessKey}`, shortDate);
-  const regionKey = hmac(dateKey, "auto");
-  const serviceKey = hmac(regionKey, "s3");
-  const signingKey = hmac(serviceKey, "aws4_request");
-  const signature = createHmac("sha256", signingKey)
-    .update(stringToSign)
-    .digest("hex");
-  const authorization =
-    `AWS4-HMAC-SHA256 Credential=${config.accessKeyId}/${scope}, ` +
-    `SignedHeaders=${signedHeaders}, Signature=${signature}`;
-
-  const response = await fetch(`https://${host}${path}?${query}`, {
-    headers: {
-      Authorization: authorization,
-      "x-amz-content-sha256": payloadHash,
-      "x-amz-date": amzDate,
+async function listBackups(config: Config) {
+  const client = new S3Client({
+    region: "auto",
+    endpoint: `https://${config.accountId}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: config.accessKeyId,
+      secretAccessKey: config.secretAccessKey,
     },
   });
-  if (!response.ok) {
-    throw new Error(`R2 list failed with HTTP ${response.status}`);
-  }
-  return parseLatestBackup(await response.text());
+  const response = await client.send(
+    new ListObjectsV2Command({
+      Bucket: config.bucket,
+      Prefix: config.prefix,
+    }),
+  );
+  const timestamps = (response.Contents ?? [])
+    .map((item) => item.LastModified)
+    .filter((value): value is Date => value instanceof Date);
+  if (timestamps.length === 0) return null;
+  return new Date(Math.max(...timestamps.map((date) => date.getTime())));
 }
 
 async function sendTelegram(config: Config, text: string) {
@@ -105,7 +73,7 @@ async function sendTelegram(config: Config, text: string) {
 
 async function check(config: Config) {
   const now = new Date();
-  const latest = await listBackups(config, now);
+  const latest = await listBackups(config);
   if (!backupIsStale(latest, now, config.maxAgeHours)) {
     console.log(`backup healthy: ${latest?.toISOString()}`);
     return;
