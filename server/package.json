@@ -10,6 +10,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:migrate:prod": "node dist/src/db/migrate.js",
     "db:retention:prod": "node dist/src/jobs/prune-reports.js",
+    "db:retention:scheduler:prod": "node dist/src/jobs/schedule-report-retention.js",
     "dev": "tsx watch src/server.ts",
     "format": "biome check --write .",
     "lint": "biome check .",

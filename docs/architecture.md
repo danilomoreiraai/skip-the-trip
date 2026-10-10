@@ -72,9 +72,8 @@ containerized staging stack, dashboards and alert rules are implemented. The
 remaining backend and operational work is intentionally issue-driven:
 
 1. [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19) — verify encrypted production backups and restoration.
-2. [#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20) — schedule and monitor the implemented retention job.
-3. [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21) — configure alert delivery and incident runbooks.
-4. [#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23) — add server tracing and W3C trace propagation.
+2. [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21) — configure alert delivery and incident runbooks.
+3. [#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23) — add server tracing and W3C trace propagation.
 
 ## Quality gates
 

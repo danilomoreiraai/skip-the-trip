@@ -65,6 +65,28 @@ services:
     security_opt:
       - no-new-privileges:true
 
+  retention-scheduler:
+    build:
+      context: ./server
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Set the EasyPanel PostgreSQL internal URL}
+      REPORT_RETENTION_DAYS: ${REPORT_RETENTION_DAYS:-30}
+      RETENTION_INTERVAL_HOURS: ${RETENTION_INTERVAL_HOURS:-24}
+      RETENTION_FAILURE_THRESHOLD: ${RETENTION_FAILURE_THRESHOLD:-3}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?Set TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?Set TELEGRAM_CHAT_ID}
+    command: ["npm", "run", "db:retention:scheduler:prod"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - easypanel
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
   web:
     build:
       context: ./web

@@ -1,4 +1,4 @@
-# EasyPanel staging deployment
+# EasyPanel deployment
 
 The recommended topology uses a native EasyPanel PostgreSQL service and a
 Compose service for the migration, API and web application. EasyPanel owns the
@@ -60,17 +60,51 @@ Then create a GlitchTip GET uptime monitor for
 ## 6. Backups and retention
 
 Production completion and restore evidence are tracked in
-[#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19); automated
-retention scheduling is tracked in
-[#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20).
+[#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19). Automated
+retention scheduling and monitoring are implemented by the service below.
 
 Follow the [production backup and recovery runbook](backup-recovery.md) to
 configure remote encrypted storage, a daily logical backup, failure detection,
 and an isolated restore drill. A successful upload is not restore evidence.
 
-Schedule the retention command daily in the hosting environment using the same
-server image and `DATABASE_URL`:
+The production Compose definition includes a `retention-scheduler` service. It
+runs once when the service starts and then every 24 hours by default. Configure
+the following values in the EasyPanel Compose environment:
+
+- `REPORT_RETENTION_DAYS`: age threshold for deletion, in days (default `30`).
+- `RETENTION_INTERVAL_HOURS`: interval between runs (default `24`).
+- `RETENTION_FAILURE_THRESHOLD`: consecutive failures before an alert (default
+  `3`).
+- `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`: operational alert destination.
+
+Each run writes one privacy-safe JSON event to the service log. Successful
+events contain `deleted` and `duration_ms`; failed events contain only duration,
+failure count, and error class. They never contain report records, locations,
+client identifiers, database URLs, or exception messages.
+
+## 7. Manual execution and recovery
+
+Before a controlled manual production run, confirm that the latest backup is
+healthy and record the current retention configuration. In the EasyPanel
+terminal for the `retention-scheduler` service, run:
 
 ```sh
 npm run db:retention:prod
 ```
+
+The command uses the same `DATABASE_URL` and `REPORT_RETENTION_DAYS` as the
+scheduled service and prints `reports.retention.succeeded` with its deleted-row
+count and duration. Do not override the retention window for an ad-hoc run.
+
+For controlled verification, create test records in an isolated staging
+database on both sides of the cutoff, run the command, and verify that only the
+older fixture was deleted. In production, verify the log event and confirm that
+current reports remain available through the API; do not insert synthetic
+production reports.
+
+If an unexpected deletion is suspected, stop `retention-scheduler`, preserve
+its logs and configuration, and follow the
+[production backup and recovery runbook](backup-recovery.md) to restore into an
+isolated database first. Compare the affected time range before deciding
+whether to restore production. Restart the scheduler only after the retention
+window and recovered data have been validated.

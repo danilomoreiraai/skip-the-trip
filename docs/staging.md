@@ -120,8 +120,11 @@ docker compose --env-file .env.staging -f compose.staging.yml \
   --profile operations run --rm retention
 ```
 
-In a hosted environment, schedule that command daily. Reports older than
-`REPORT_RETENTION_DAYS` are removed; the default is 30 days.
+Production runs the dedicated `retention-scheduler` service from
+`compose.easypanel.yml` every 24 hours. Reports older than
+`REPORT_RETENTION_DAYS` are removed; the default is 30 days. See
+[`docs/easypanel.md`](easypanel.md) for logs, repeated-failure alerts, controlled
+verification, and recovery.
 
 `VOTE_COOLDOWN_SECONDS` defaults to 300 seconds and limits repeated votes from
 the same installation for the same bathroom. Set `GOOGLE_ANALYTICS_ID` to a
@@ -138,7 +141,6 @@ docker compose --env-file .env.staging -f compose.staging.yml down
 
 Do not add `-v` to `down` unless deleting the staging database is intentional.
 Production follow-ups are tracked explicitly: backups and restore verification
-in [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19), automated
-retention in [#20](https://github.com/danilomoreiraai/skip-the-trip/issues/20),
-and alert delivery plus incident runbooks in
+in [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19), and alert
+delivery plus incident runbooks in
 [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21).
