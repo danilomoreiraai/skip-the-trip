@@ -36,8 +36,10 @@ services:
       migrate:
         condition: service_completed_successfully
     networks:
-      - default
-      - easypanel
+      default:
+        aliases:
+          - skip-the-trip-server
+      easypanel:
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3333/health/ready"]
       interval: 10s
@@ -96,6 +98,7 @@ services:
     volumes:
       - ./scripts:/scripts:ro
       - alertmanager-config:/alertmanager/config
+      - alertmanager-data:/alertmanager/data
     restart: "no"
     security_opt:
       - no-new-privileges:true
@@ -112,7 +115,10 @@ services:
       alert-config:
         condition: service_completed_successfully
     networks:
-      - default
+      default:
+        aliases:
+          - skip-the-trip-alertmanager
+      easypanel:
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9093/-/ready"]
       interval: 10s
@@ -139,6 +145,7 @@ services:
         condition: service_healthy
     networks:
       - default
+      - easypanel
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:9090/-/ready"]
       interval: 10s

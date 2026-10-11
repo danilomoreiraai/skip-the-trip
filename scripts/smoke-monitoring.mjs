@@ -50,7 +50,7 @@ for (const expected of [
 const alertmanagers = await json(`${prometheusUrl}/api/v1/alertmanagers`);
 assert(
   alertmanagers.data.activeAlertmanagers.some(({ url }) =>
-    url.includes("alertmanager:9093"),
+    url.includes("skip-the-trip-alertmanager:9093"),
   ),
   "Prometheus is not connected to Alertmanager",
 );

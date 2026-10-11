@@ -8,10 +8,10 @@ rule_files:
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ["alertmanager:9093"]
+        - targets: ["skip-the-trip-alertmanager:9093"]
 
 scrape_configs:
   - job_name: skip-the-trip-api
     metrics_path: /metrics
     static_configs:
-      - targets: ["server:3333"]
+      - targets: ["skip-the-trip-server:3333"]

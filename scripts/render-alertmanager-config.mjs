@@ -1,7 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { chown, mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 
 const output = process.env.ALERTMANAGER_CONFIG_PATH ?? "/alertmanager/config/alertmanager.yml";
+const dataDirectory = process.env.ALERTMANAGER_DATA_PATH ?? "/alertmanager/data";
 const webhookUrl = process.env.ALERT_WEBHOOK_URL?.trim();
 const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
 const telegramChatId = process.env.TELEGRAM_CHAT_ID?.trim();
@@ -50,5 +51,7 @@ const config = {
 };
 
 await mkdir(dirname(output), { recursive: true });
+await mkdir(dataDirectory, { recursive: true });
 await writeFile(output, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o644 });
+await chown(dataDirectory, 65_534, 65_534);
 console.log(`Alertmanager configuration written to ${output}`);

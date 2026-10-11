@@ -58,6 +58,10 @@ services:
       timeout: 5s
       retries: 12
     restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - skip-the-trip-server
 
   retention:
     profiles: ["operations"]
@@ -126,6 +130,7 @@ services:
     volumes:
       - ./scripts:/scripts:ro
       - alertmanager-config:/alertmanager/config
+      - alertmanager-data:/alertmanager/data
     depends_on:
       alert-receiver:
         condition: service_healthy
@@ -151,6 +156,10 @@ services:
       timeout: 5s
       retries: 12
     restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - skip-the-trip-alertmanager
 
   alert-receiver:
     profiles: ["monitoring"]
