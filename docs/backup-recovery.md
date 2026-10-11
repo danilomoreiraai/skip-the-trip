@@ -107,6 +107,12 @@ empty, or the R2 check fails. Healthy checks are silent. The monitor uses a
 dedicated Telegram bot and a bucket-scoped R2 object credential supplied only
 through EasyPanel environment variables.
 
+Checks continue around the clock, but operational Telegram notifications are
+sent only Monday through Friday from 06:00 inclusive until 18:00 exclusive in
+the `Europe/Dublin` timezone. Alertmanager uses the same production delivery
+window. An active problem detected outside the window can notify on the first
+check or Alertmanager delivery attempt after the window opens.
+
 Because a completion notification alone may not detect a job that never ran,
 also create a daily check in the storage provider or monitoring system that
 alerts when no new object appears under the production path for 26 hours. The

@@ -38,16 +38,40 @@ function receiver() {
   };
 }
 
+const productionTelegram = !webhookUrl;
+
+const businessHours = {
+  name: "weekday-business-hours",
+  time_intervals: [
+    {
+      weekdays: ["monday:friday"],
+      times: [{ start_time: "06:00", end_time: "18:00" }],
+      location: "Europe/Dublin",
+    },
+  ],
+};
+
 const config = {
   global: { resolve_timeout: "5m" },
   route: {
-    receiver: "operations",
+    receiver: productionTelegram ? "discard" : "operations",
     group_by: ["alertname", "severity"],
     group_wait: "1s",
     group_interval: "5m",
     repeat_interval: "4h",
+    ...(productionTelegram
+      ? {
+          routes: [
+            {
+              receiver: "operations",
+              active_time_intervals: [businessHours.name],
+            },
+          ],
+        }
+      : {}),
   },
-  receivers: [receiver()],
+  receivers: [...(productionTelegram ? [{ name: "discard" }] : []), receiver()],
+  ...(productionTelegram ? { time_intervals: [businessHours] } : {}),
 };
 
 await mkdir(dirname(output), { recursive: true });

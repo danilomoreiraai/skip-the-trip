@@ -1,5 +1,9 @@
 import { ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { backupIsStale } from "../lib/backup-monitor.js";
+import {
+  isWithinNotificationWindow,
+  notificationWindowDescription,
+} from "../lib/notification-window.js";
 
 type Config = {
   accountId: string;
@@ -81,6 +85,12 @@ async function check(config: Config) {
   const detail = latest
     ? `last backup: ${latest.toISOString()}`
     : `no object found under ${config.prefix}`;
+  if (!isWithinNotificationWindow(now)) {
+    console.error(
+      `backup stale; notification suppressed outside ${notificationWindowDescription}: ${detail}`,
+    );
+    return;
+  }
   await sendTelegram(
     config,
     `⚠️ Skip The Trip backup alert\n${detail}\nExpected age: < ${config.maxAgeHours}h\nEasyPanel: https://painel.levelupuser.com/`,
@@ -102,7 +112,7 @@ async function main() {
       failureNotified = false;
     } catch (error) {
       console.error(error);
-      if (!failureNotified) {
+      if (!failureNotified && isWithinNotificationWindow(new Date())) {
         await sendTelegram(
           config,
           `⚠️ Skip The Trip backup monitor failed\n${error instanceof Error ? error.message : "unknown error"}`,
