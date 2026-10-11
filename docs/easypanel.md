@@ -81,7 +81,13 @@ The same Telegram destination is the owned contact point for Prometheus alerts.
 The production stack renders Alertmanager configuration from these secrets at
 deploy time; generated configuration remains in a private Docker volume and
 must never be copied into logs or the repository. Prometheus and Alertmanager
-are internal-only services with no public port. Follow the
+are internal-only services with no public port. The production Prometheus
+configuration uses the stable Compose container DNS names registered by
+EasyPanel on its external network; the portable staging configuration keeps
+using ordinary Compose aliases. If the EasyPanel project or Compose service is
+renamed, update `monitoring/prometheus/prometheus.easypanel.yml` and verify both
+the scrape target and Alertmanager discovery before considering the deployment
+healthy. Follow the
 [incident response runbook](incident-response.md) for acknowledgement,
 escalation, controlled delivery testing, rollback and recovery verification.
 
