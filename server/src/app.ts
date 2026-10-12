@@ -10,6 +10,7 @@ import {
 import type { Env } from "./env.js";
 import type { LocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import type { ReportsRepository } from "./modules/reports/repository.js";
+import { registerTracing } from "./observability/tracing.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerMetrics } from "./plugins/metrics.js";
 import { registerLocationRoutes } from "./routes/locations.js";
@@ -48,6 +49,7 @@ export async function buildApp({
   });
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
+  registerTracing(app);
   registerErrorHandler(app, captureException);
   registerMetrics(app, reportsRepository);
 

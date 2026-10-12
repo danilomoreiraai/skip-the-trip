@@ -35,14 +35,21 @@ Honeycomb, or another compatible backend. Telemetry is disabled when its
 environment variables are absent, default PII collection is disabled and report
 payloads are never attached to error events.
 
-Browser tracing is useful for user-visible operations, but it is not a substitute
-for server telemetry. Fastify emits structured logs and request IDs, exposes RED
+Browser operations inject W3C `traceparent`/`tracestate` headers. Nginx forwards
+them unchanged, Fastify continues the trace, and repository boundaries create
+PostgreSQL child spans. HTTP spans contain only method, route template, status,
+and request ID; database spans contain only the database system and a bounded
+operation name. Query strings, SQL text/values, coordinates, bathroom choices,
+cookies, identities, arbitrary headers, and bodies are never attached.
+
+Both browser and server export are independently disabled when their OTLP
+endpoint is absent. Fastify also emits structured logs and request IDs, exposes RED
 and process metrics at `/metrics`, and checks database readiness. Prometheus and
 Grafana are provisioned with API health, latency, error, database and privacy-safe
 geolocation failure panels. Alert rules exist; production delivery and response
 runbooks are tracked in
 [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21). Server and
-database trace propagation is tracked in
+database trace propagation is implemented by
 [#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23).
 
 ## Backend module seams
@@ -77,7 +84,6 @@ remaining backend and operational work is intentionally issue-driven:
 
 1. [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19) — verify encrypted production backups and restoration.
 2. [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21) — configure alert delivery and incident runbooks.
-3. [#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23) — add server tracing and W3C trace propagation.
 
 ## Quality gates
 

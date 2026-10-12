@@ -58,10 +58,11 @@ describe("reports API service", () => {
       yesCount: 3,
       noCount: 1,
     });
-    expect(fetch).toHaveBeenCalledWith(
+    const [url, init] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(url).toBe(
       "http://localhost:3333/reports?building=HH1&floor=G&category=Male",
-      expect.objectContaining({ headers: { Accept: "application/json" } }),
     );
+    expect(new Headers(init?.headers).get("accept")).toBe("application/json");
   });
 
   it("maps an empty API summary to no current report", async () => {

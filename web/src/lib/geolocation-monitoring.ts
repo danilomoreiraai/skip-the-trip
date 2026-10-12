@@ -1,4 +1,5 @@
 import { env } from "../env";
+import { injectTraceContext } from "./observability";
 
 export type GeolocationFailureCategory =
   | "permission_denied"
@@ -24,13 +25,13 @@ export async function reportGeolocationFailure(
   try {
     await fetch(
       `${env.VITE_API_URL.replace(/\/$/, "")}/client-events/geolocation`,
-      {
+      injectTraceContext({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, context: browserContext() }),
         credentials: "omit",
         keepalive: true,
-      },
+      }),
     );
   } catch {
     // Monitoring must never interfere with location verification or voting.

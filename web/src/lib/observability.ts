@@ -1,4 +1,12 @@
-import { type Attributes, SpanStatusCode, trace } from "@opentelemetry/api";
+import {
+  type Attributes,
+  type Context,
+  context,
+  propagation,
+  SpanStatusCode,
+  type TextMapPropagator,
+  trace,
+} from "@opentelemetry/api";
 import { env } from "../env";
 
 const tracerName = "skip-the-trip.web";
@@ -55,6 +63,20 @@ export const observability: Observability = {
     });
   },
 };
+
+export function injectTraceContext(
+  init: RequestInit = {},
+  activeContext: Context = context.active(),
+  propagator: TextMapPropagator = propagation,
+): RequestInit {
+  const headers = new Headers(init.headers);
+  propagator.inject(activeContext, headers, {
+    set(carrier, key, value) {
+      carrier.set(key, value);
+    },
+  });
+  return { ...init, headers };
+}
 
 export async function initializeObservability() {
   if (env.VITE_SENTRY_DSN) {
