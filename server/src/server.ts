@@ -3,7 +3,12 @@ import { db, pool } from "./db/index.js";
 import { env } from "./env.js";
 import { createLocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import { createReportsRepository } from "./modules/reports/repository.js";
-import { initializeTracing, shutdownTracing } from "./observability/tracing.js";
+import {
+  initializeTracing,
+  instrumentLocationAuthorizationsRepository,
+  instrumentReportsRepository,
+  shutdownTracing,
+} from "./observability/tracing.js";
 
 initializeTracing({
   serviceName: env.OTEL_SERVICE_NAME,
@@ -46,8 +51,10 @@ if (env.SENTRY_DSN) {
 
 const app = await buildApp({
   config: env,
-  reportsRepository: createReportsRepository(db),
-  locationAuthorizationsRepository: createLocationAuthorizationsRepository(db),
+  reportsRepository: instrumentReportsRepository(createReportsRepository(db)),
+  locationAuthorizationsRepository: instrumentLocationAuthorizationsRepository(
+    createLocationAuthorizationsRepository(db),
+  ),
   ...(captureException ? { captureException } : {}),
 });
 

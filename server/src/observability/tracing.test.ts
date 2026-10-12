@@ -7,9 +7,13 @@ import {
 } from "@opentelemetry/sdk-trace-base";
 import { NodeTracerProvider } from "@opentelemetry/sdk-trace-node";
 import Fastify from "fastify";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import type { LocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import type { ReportsRepository } from "../modules/reports/repository.js";
 import {
   initializeTracing,
+  instrumentLocationAuthorizationsRepository,
+  instrumentReportsRepository,
   registerTracing,
   traceDatabaseOperation,
 } from "./tracing.js";
@@ -87,5 +91,69 @@ describe("server tracing", () => {
         environment: "test",
       }),
     ).toBe(false);
+  });
+
+  it("instruments every repository boundary without exposing arguments", async () => {
+    const { exporter, tracer } = testTracer();
+    const reports = {
+      createWithCooldown: vi.fn().mockResolvedValue({
+        created: true,
+        retryAfterSeconds: 0,
+      }),
+      findSummary: vi.fn().mockResolvedValue({}),
+      deleteExpired: vi.fn().mockResolvedValue({ activeVotes: 0, reports: 0 }),
+      ping: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReportsRepository;
+    const authorizations = {
+      findValid: vi.fn().mockResolvedValue(null),
+      authorize: vi.fn().mockResolvedValue({
+        verifiedAt: new Date(0),
+        expiresAt: new Date(1),
+      }),
+      deleteExpired: vi.fn().mockResolvedValue(0),
+    } as LocationAuthorizationsRepository;
+    const tracedReports = instrumentReportsRepository(reports, tracer);
+    const tracedAuthorizations = instrumentLocationAuthorizationsRepository(
+      authorizations,
+      tracer,
+    );
+    const sensitive = "must-not-be-exported";
+
+    await tracedReports.createWithCooldown(
+      { anonymousId: sensitive } as never,
+      300,
+      30,
+    );
+    await tracedReports.findSummary(
+      { building: sensitive } as never,
+      new Date(),
+    );
+    await tracedReports.deleteExpired(new Date());
+    await tracedReports.ping();
+    await tracedAuthorizations.findValid(sensitive, sensitive, new Date());
+    await tracedAuthorizations.authorize(
+      sensitive,
+      sensitive,
+      { verifiedAt: new Date(0), expiresAt: new Date(1) },
+      new Date(),
+    );
+    await tracedAuthorizations.deleteExpired(new Date());
+
+    expect(exporter.getFinishedSpans().map(({ name }) => name)).toEqual([
+      "postgresql.reports.create",
+      "postgresql.reports.read",
+      "postgresql.reports.delete_expired",
+      "postgresql.healthcheck",
+      "postgresql.location_authorizations.read",
+      "postgresql.location_authorizations.authorize",
+      "postgresql.location_authorizations.delete_expired",
+    ]);
+    expect(
+      JSON.stringify(
+        exporter
+          .getFinishedSpans()
+          .map(({ name, attributes }) => ({ name, attributes })),
+      ),
+    ).not.toContain(sensitive);
   });
 });

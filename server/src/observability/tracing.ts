@@ -19,6 +19,8 @@ import {
   ATTR_SERVICE_VERSION,
 } from "@opentelemetry/semantic-conventions";
 import type { FastifyInstance, FastifyRequest } from "fastify";
+import type { LocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import type { ReportsRepository } from "../modules/reports/repository.js";
 
 type RequestTrace = { context: Context; span: ReturnType<Tracer["startSpan"]> };
 const requestTraces = new WeakMap<FastifyRequest, RequestTrace>();
@@ -138,4 +140,58 @@ export async function traceDatabaseOperation<T>(
       }
     },
   );
+}
+
+export function instrumentReportsRepository(
+  repository: ReportsRepository,
+  tracer: Tracer = trace.getTracer("skip-the-trip.database"),
+): ReportsRepository {
+  return {
+    createWithCooldown: (...args) =>
+      traceDatabaseOperation(
+        "reports.create",
+        () => repository.createWithCooldown(...args),
+        tracer,
+      ),
+    findSummary: (...args) =>
+      traceDatabaseOperation(
+        "reports.read",
+        () => repository.findSummary(...args),
+        tracer,
+      ),
+    deleteExpired: (...args) =>
+      traceDatabaseOperation(
+        "reports.delete_expired",
+        () => repository.deleteExpired(...args),
+        tracer,
+      ),
+    ping: () =>
+      traceDatabaseOperation("healthcheck", () => repository.ping(), tracer),
+  };
+}
+
+export function instrumentLocationAuthorizationsRepository(
+  repository: LocationAuthorizationsRepository,
+  tracer: Tracer = trace.getTracer("skip-the-trip.database"),
+): LocationAuthorizationsRepository {
+  return {
+    findValid: (...args) =>
+      traceDatabaseOperation(
+        "location_authorizations.read",
+        () => repository.findValid(...args),
+        tracer,
+      ),
+    authorize: (...args) =>
+      traceDatabaseOperation(
+        "location_authorizations.authorize",
+        () => repository.authorize(...args),
+        tracer,
+      ),
+    deleteExpired: (...args) =>
+      traceDatabaseOperation(
+        "location_authorizations.delete_expired",
+        () => repository.deleteExpired(...args),
+        tracer,
+      ),
+  };
 }
