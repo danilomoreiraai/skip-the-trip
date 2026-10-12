@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { type Bathroom, bathroomSchema, type Report } from "../domain/bathroom";
 import { env } from "../env";
-import { observability } from "../lib/observability";
+import { injectTraceContext, observability } from "../lib/observability";
 
 const SELECTION_KEY = "skip-the-trip:selection";
 const apiUrl = env.VITE_API_URL.replace(/\/$/, "");
@@ -21,18 +21,24 @@ const apiErrorSchema = z.object({
 
 async function fetchWithNetworkRetry(input: string, init: RequestInit) {
   try {
-    return await fetch(input, {
-      ...init,
-      credentials: "include",
-      signal: AbortSignal.timeout(10_000),
-    });
+    return await fetch(
+      input,
+      injectTraceContext({
+        ...init,
+        credentials: "include",
+        signal: AbortSignal.timeout(10_000),
+      }),
+    );
   } catch (error) {
     if (!(error instanceof TypeError)) throw error;
-    return fetch(input, {
-      ...init,
-      credentials: "include",
-      signal: AbortSignal.timeout(10_000),
-    });
+    return fetch(
+      input,
+      injectTraceContext({
+        ...init,
+        credentials: "include",
+        signal: AbortSignal.timeout(10_000),
+      }),
+    );
   }
 }
 
@@ -99,11 +105,14 @@ export async function getReport(bathroom: Bathroom): Promise<Report | null> {
     { "report.storage": "api" },
     async () => {
       const query = new URLSearchParams(validBathroom);
-      const response = await fetch(`${apiUrl}/reports?${query}`, {
-        headers: { Accept: "application/json" },
-        credentials: "include",
-        signal: AbortSignal.timeout(10_000),
-      });
+      const response = await fetch(
+        `${apiUrl}/reports?${query}`,
+        injectTraceContext({
+          headers: { Accept: "application/json" },
+          credentials: "include",
+          signal: AbortSignal.timeout(10_000),
+        }),
+      );
       return toReport(await parseResponse(response));
     },
   );

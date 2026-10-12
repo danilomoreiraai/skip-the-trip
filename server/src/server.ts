@@ -3,6 +3,21 @@ import { db, pool } from "./db/index.js";
 import { env } from "./env.js";
 import { createLocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import { createReportsRepository } from "./modules/reports/repository.js";
+import {
+  initializeTracing,
+  instrumentLocationAuthorizationsRepository,
+  instrumentReportsRepository,
+  shutdownTracing,
+} from "./observability/tracing.js";
+
+initializeTracing({
+  serviceName: env.OTEL_SERVICE_NAME,
+  serviceVersion: env.SENTRY_RELEASE,
+  environment: env.SENTRY_ENVIRONMENT,
+  ...(env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+    ? { endpoint: env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT }
+    : {}),
+});
 
 let captureException:
   | ((error: unknown, context: { requestId: string; route: string }) => void)
@@ -36,8 +51,10 @@ if (env.SENTRY_DSN) {
 
 const app = await buildApp({
   config: env,
-  reportsRepository: createReportsRepository(db),
-  locationAuthorizationsRepository: createLocationAuthorizationsRepository(db),
+  reportsRepository: instrumentReportsRepository(createReportsRepository(db)),
+  locationAuthorizationsRepository: instrumentLocationAuthorizationsRepository(
+    createLocationAuthorizationsRepository(db),
+  ),
   ...(captureException ? { captureException } : {}),
 });
 
@@ -45,6 +62,7 @@ async function shutdown(signal: string) {
   app.log.info({ signal }, "Shutting down");
   await app.close();
   await flushErrorTracking?.();
+  await shutdownTracing();
   await pool.end();
   process.exit(0);
 }

@@ -84,6 +84,30 @@ sum by (category, context) (
 Production routing, ownership, thresholds and response procedures are defined
 in the [incident response runbook](incident-response.md).
 
+### Distributed traces
+
+Configure `VITE_OTEL_EXPORTER_OTLP_ENDPOINT` for the browser and
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` for the API, then rebuild `web` and restart
+`server`. A report request should produce one trace containing the browser
+operation, Fastify server span, and a PostgreSQL repository span. The API span's
+`server.request_id` matches the `x-request-id` response header and structured
+server log, so an incident can move between logs and traces without using vote
+or location data.
+
+For a TraceQL-compatible backend such as Grafana Tempo, find a request by its
+safe request ID with:
+
+```traceql
+{ resource.service.name = "skip-the-trip-api" && span.server.request_id = "REQUEST_ID" }
+```
+
+Then open the returned trace ID to inspect the related
+`skip-the-trip-web` and PostgreSQL spans. Expected attributes are limited to
+service/release/environment, HTTP method/route template/status/request ID, and
+bounded database operation names. Treat query strings, SQL text or values,
+coordinates, bathroom selections, cookies, identities, arbitrary headers, or
+bodies as a telemetry privacy defect.
+
 ## GlitchTip error tracking and uptime
 
 Create two GlitchTip projects, one using the React platform and one using the

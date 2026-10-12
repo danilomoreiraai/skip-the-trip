@@ -44,6 +44,11 @@ const envSchema = z.object({
   ),
   SENTRY_ENVIRONMENT: z.string().min(1).default("development"),
   SENTRY_RELEASE: z.string().min(1).default("local"),
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.string().url().optional(),
+  ),
+  OTEL_SERVICE_NAME: z.string().min(1).default("skip-the-trip-api"),
 });
 
 export type Env = z.infer<typeof envSchema>;

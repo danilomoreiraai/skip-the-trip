@@ -32,6 +32,14 @@ The checked-in example currently points to the temporary physical-test center
 in Cobh. Restore the official HH5 coordinates after the on-site test; the
 application image does not need to change when only these values change.
 
+For distributed tracing, set `VITE_OTEL_EXPORTER_OTLP_ENDPOINT` to a public
+HTTPS OTLP/HTTP traces endpoint reachable by browsers and
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` to the collector endpoint reachable by the
+API container. Leave either empty to disable that exporter safely. Configure the
+collector CORS policy to accept `traceparent`, `tracestate`, and `content-type`
+from the application origin; never put collector credentials in the browser
+endpoint URL.
+
 ## 4. Domain and TLS
 
 After the Compose deployment is healthy, add a domain to the Compose service:
