@@ -15,6 +15,7 @@ import {
   instrumentLocationAuthorizationsRepository,
   instrumentReportsRepository,
   registerTracing,
+  shutdownTracing,
   traceDatabaseOperation,
 } from "./tracing.js";
 
@@ -91,6 +92,18 @@ describe("server tracing", () => {
         environment: "test",
       }),
     ).toBe(false);
+  });
+
+  it("initializes and shuts down an explicitly configured exporter", async () => {
+    expect(
+      initializeTracing({
+        endpoint: "http://127.0.0.1:9/v1/traces",
+        serviceName: "test",
+        serviceVersion: "test",
+        environment: "test",
+      }),
+    ).toBe(true);
+    await expect(shutdownTracing()).resolves.toBeUndefined();
   });
 
   it("instruments every repository boundary without exposing arguments", async () => {
