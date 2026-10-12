@@ -92,9 +92,11 @@ healthy. Follow the
 escalation, controlled delivery testing, rollback and recovery verification.
 
 Each run writes one privacy-safe JSON event to the service log. Successful
-events contain `deleted` and `duration_ms`; failed events contain only duration,
-failure count, and error class. They never contain report records, locations,
-client identifiers, database URLs, or exception messages.
+events contain `deleted_reports`, `deleted_active_votes`,
+`deleted_location_authorizations`, `deleted_total`, and `duration_ms`; failed
+events contain only duration, failure count, and error class. They never contain
+report records, locations, client identifiers, database URLs, or exception
+messages.
 
 ## 7. Manual execution and recovery
 
@@ -107,8 +109,10 @@ npm run db:retention:prod
 ```
 
 The command uses the same `DATABASE_URL` and `REPORT_RETENTION_DAYS` as the
-scheduled service and prints `reports.retention.succeeded` with its deleted-row
-count and duration. Do not override the retention window for an ad-hoc run.
+scheduled service and prints `reports.retention.succeeded` with privacy-safe
+deleted-row counts by record type and duration. Reports and active votes use the
+configured retention cutoff; expired location authorizations are removed on the
+next run. Do not override the retention window for an ad-hoc run.
 
 For controlled verification, create test records in an isolated staging
 database on both sides of the cutoff, run the command, and verify that only the

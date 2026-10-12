@@ -15,7 +15,9 @@ export type ReportsRepository = {
     now?: Date,
   ): Promise<{ created: boolean; retryAfterSeconds: number }>;
   findSummary(bathroom: Bathroom, now: Date): Promise<ReportSummary>;
-  deleteExpired(before: Date): Promise<number>;
+  deleteExpired(
+    before: Date,
+  ): Promise<{ activeVotes: number; reports: number }>;
   ping(): Promise<void>;
 };
 
@@ -118,12 +120,18 @@ export function createReportsRepository(db: Database): ReportsRepository {
       };
     },
     async deleteExpired(before) {
-      const deleted = await db
+      const deletedReports = await db
         .delete(reports)
         .where(lt(reports.createdAt, before))
         .returning({ id: reports.id });
-      await db.delete(activeVotes).where(lt(activeVotes.expiresAt, before));
-      return deleted.length;
+      const deletedActiveVotes = await db
+        .delete(activeVotes)
+        .where(lt(activeVotes.expiresAt, before))
+        .returning({ anonymousId: activeVotes.anonymousId });
+      return {
+        activeVotes: deletedActiveVotes.length,
+        reports: deletedReports.length,
+      };
     },
     async ping() {
       await db.execute(sql`select 1`);

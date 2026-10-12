@@ -2,6 +2,7 @@ import { db, pool } from "../db/index.js";
 import { env } from "../env.js";
 import { pruneReports } from "../functions/prune-reports.js";
 import { createRetentionScheduler } from "../lib/retention-scheduler.js";
+import { createLocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
 import { createReportsRepository } from "../modules/reports/repository.js";
 
 const positiveNumber = (name: string, fallback: number) => {
@@ -42,11 +43,13 @@ async function main() {
   const intervalHours = positiveNumber("RETENTION_INTERVAL_HOURS", 24);
   const failureThreshold = positiveInteger("RETENTION_FAILURE_THRESHOLD", 3);
   const repository = createReportsRepository(db);
+  const authorizations = createLocationAuthorizationsRepository(db);
   const execute = createRetentionScheduler({
     failureThreshold,
     log: (entry) => console.log(JSON.stringify(entry)),
     notify: sendTelegram,
-    run: () => pruneReports(repository, env.REPORT_RETENTION_DAYS),
+    run: () =>
+      pruneReports(repository, authorizations, env.REPORT_RETENTION_DAYS),
   });
 
   for (;;) {

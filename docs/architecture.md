@@ -63,6 +63,10 @@ Drizzle PostgreSQL adapter
 - Only reports inside `REPORT_WINDOW_MINUTES` contribute to the returned status.
 - Repeated votes from the same installation and bathroom are rejected for
   `VOTE_COOLDOWN_SECONDS` (300 seconds by default).
+- The retention function coordinates the reports and location-authorization
+  repository interfaces. It applies the configured report cutoff, deletes
+  expired location authorizations, and returns privacy-safe counts by record
+  type for scheduler logs.
 - R2, links, slugs, redirects and CSV export are deliberately absent.
 
 ## Operational backlog

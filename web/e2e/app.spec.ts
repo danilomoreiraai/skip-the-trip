@@ -367,7 +367,14 @@ test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
   await expect(page.getByText("Available soon").first()).toBeVisible();
   await page.getByRole("link", { name: "Privacy", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Privacy, kept simple." }),
+    page.getByRole("heading", { name: "Privacy notice" }),
+  ).toBeVisible();
+  await expect(page.getByText("Danilo Moreira", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "privacy@skipthetrip.info" }).first(),
+  ).toHaveAttribute("href", "mailto:privacy@skipthetrip.info");
+  await expect(
+    page.getByRole("heading", { name: "Your choices and rights" }),
   ).toBeVisible();
   await page.goto("/missing");
   await expect(

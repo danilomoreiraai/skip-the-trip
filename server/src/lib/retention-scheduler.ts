@@ -1,10 +1,12 @@
+import type { RetentionDeletionSummary } from "../functions/prune-reports.js";
+
 export type RetentionRunResult = {
-  deleted: number;
+  deleted: RetentionDeletionSummary;
   durationMs: number;
 };
 
 type RetentionSchedulerOptions = {
-  run: () => Promise<number>;
+  run: () => Promise<RetentionDeletionSummary>;
   notify: (message: string) => Promise<void>;
   log: (entry: Record<string, unknown>) => void;
   failureThreshold: number;
@@ -12,7 +14,7 @@ type RetentionSchedulerOptions = {
 };
 
 export async function runRetention(
-  run: () => Promise<number>,
+  run: () => Promise<RetentionDeletionSummary>,
   now: () => number = Date.now,
 ): Promise<RetentionRunResult> {
   const startedAt = now();
@@ -31,7 +33,10 @@ export function createRetentionScheduler(options: RetentionSchedulerOptions) {
       consecutiveFailures = 0;
       failureNotified = false;
       options.log({
-        deleted: result.deleted,
+        deleted_active_votes: result.deleted.activeVotes,
+        deleted_location_authorizations: result.deleted.locationAuthorizations,
+        deleted_reports: result.deleted.reports,
+        deleted_total: result.deleted.total,
         duration_ms: result.durationMs,
         event: "reports.retention.succeeded",
         started_at: new Date(startedAt).toISOString(),

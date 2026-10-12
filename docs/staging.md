@@ -125,7 +125,9 @@ docker compose --env-file .env.staging -f compose.staging.yml \
 
 Production runs the dedicated `retention-scheduler` service from
 `compose.easypanel.yml` every 24 hours. Reports older than
-`REPORT_RETENTION_DAYS` are removed; the default is 30 days. See
+`REPORT_RETENTION_DAYS` and active votes past the corresponding cutoff are
+removed; the default is 30 days. Location authorizations are removed after
+their four-hour expiry on the next scheduler run. See
 [`docs/easypanel.md`](easypanel.md) for logs, repeated-failure alerts, controlled
 verification, and recovery.
 

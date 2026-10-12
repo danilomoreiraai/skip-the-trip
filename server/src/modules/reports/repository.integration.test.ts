@@ -5,6 +5,7 @@ import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import * as schema from "../../db/schema.js";
 import type { AuthorizedReportInput } from "../../domain/reports.js";
+import { pruneReports } from "../../functions/prune-reports.js";
 import { createLocationAuthorizationsRepository } from "../location-authorizations/repository.js";
 import {
   createReportsRepository,
@@ -147,5 +148,54 @@ describe("PostgreSQL location authorization repository", () => {
       new Date("2026-10-07T14:00:00.000Z"),
     );
     expect(renewed.expiresAt).toEqual(new Date("2026-10-07T18:00:00.000Z"));
+  });
+
+  it("physically deletes expired authorizations with retained report data", async () => {
+    const expiredAt = new Date("2026-10-11T13:00:00.000Z");
+    const validUntil = new Date("2026-10-11T16:00:00.000Z");
+    await repository.createWithCooldown(
+      vote(),
+      300,
+      30,
+      new Date("2026-08-01T10:00:00.000Z"),
+    );
+    await repository.createWithCooldown(
+      vote(),
+      300,
+      30,
+      new Date("2026-10-01T10:00:00.000Z"),
+    );
+    await authorizations.authorize(
+      randomUUID(),
+      "HH5",
+      {
+        expiresAt: expiredAt,
+        verifiedAt: new Date("2026-10-10T04:00:00.000Z"),
+      },
+      new Date("2026-10-10T04:00:00.000Z"),
+    );
+    await authorizations.authorize(
+      randomUUID(),
+      "HH5",
+      {
+        expiresAt: validUntil,
+        verifiedAt: new Date("2026-10-11T12:00:00.000Z"),
+      },
+      new Date("2026-10-11T12:00:00.000Z"),
+    );
+
+    await expect(
+      pruneReports(
+        repository,
+        authorizations,
+        30,
+        new Date("2026-10-11T13:00:00.000Z"),
+      ),
+    ).resolves.toEqual({
+      activeVotes: 1,
+      locationAuthorizations: 1,
+      reports: 1,
+      total: 3,
+    });
   });
 });

@@ -58,6 +58,9 @@ Sentry error reporting and OpenTelemetry tracing are disabled unless explicitly
 configured. `/privacy` describes the site and lets visitors change their
 analytics preference; unknown routes display a 404.
 
+See [`docs/privacy-governance.md`](docs/privacy-governance.md) for the processing
+inventory, retention statements, contact workflow and legal-review status.
+
 `web/src/domain` owns freshness and location rules, `web/src/services` owns API
 access, and `web/src/components` contains reusable controls. Reports refresh
 every 5 seconds while a bathroom is selected and when the page regains focus

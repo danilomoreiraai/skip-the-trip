@@ -1,4 +1,4 @@
-import { and, eq, gt, sql } from "drizzle-orm";
+import { and, eq, gt, lte, sql } from "drizzle-orm";
 import type { Database } from "../../db/index.js";
 import { locationAuthorizations } from "../../db/schema.js";
 import type { LocationAuthorizationWindow } from "../../domain/locations.js";
@@ -15,6 +15,7 @@ export type LocationAuthorizationsRepository = {
     window: LocationAuthorizationWindow,
     now: Date,
   ): Promise<LocationAuthorizationWindow>;
+  deleteExpired(before: Date): Promise<number>;
 };
 
 export function createLocationAuthorizationsRepository(
@@ -65,6 +66,13 @@ export function createLocationAuthorizationsRepository(
         if (!saved) throw new Error("Location authorization was not saved");
         return { verifiedAt: saved.verifiedAt, expiresAt: saved.expiresAt };
       });
+    },
+    async deleteExpired(before) {
+      const deleted = await db
+        .delete(locationAuthorizations)
+        .where(lte(locationAuthorizations.expiresAt, before))
+        .returning({ anonymousId: locationAuthorizations.anonymousId });
+      return deleted.length;
     },
   };
 }

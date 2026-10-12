@@ -62,7 +62,7 @@ function createFakeReportsRepository(): ReportsRepository {
       };
     },
     async deleteExpired() {
-      return 0;
+      return { activeVotes: 0, reports: 0 };
     },
     async ping() {},
   };
@@ -81,6 +81,9 @@ function createFakeAuthorizationsRepository(): LocationAuthorizationsRepository 
       if (current && current.expiresAt > now) return current;
       records.set(key, window);
       return window;
+    },
+    async deleteExpired() {
+      return 0;
     },
   };
 }
