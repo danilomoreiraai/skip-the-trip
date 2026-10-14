@@ -46,10 +46,9 @@ Both browser and server export are independently disabled when their OTLP
 endpoint is absent. Fastify also emits structured logs and request IDs, exposes RED
 and process metrics at `/metrics`, and checks database readiness. Prometheus and
 Grafana are provisioned with API health, latency, error, database and privacy-safe
-geolocation failure panels. Alert rules exist; production delivery and response
-runbooks are tracked in
-[#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21). Server and
-database trace propagation is implemented by
+geolocation failure panels. Production alert delivery and response runbooks were
+completed in [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21).
+Server and database trace propagation was completed in
 [#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23).
 
 ## Backend module seams
@@ -79,11 +78,11 @@ Drizzle PostgreSQL adapter
 ## Operational backlog
 
 The anonymous identity and duplicate-vote policy, PostgreSQL integration suite,
-containerized staging stack, dashboards and alert rules are implemented. The
-remaining backend and operational work is intentionally issue-driven:
-
-1. [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19) — verify encrypted production backups and restoration.
-2. [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21) — configure alert delivery and incident runbooks.
+containerized staging stack, dashboards, backup recovery, alert delivery and
+tracing are implemented. See the
+[tracked issues](https://github.com/danilomoreiraai/skip-the-trip/issues) for
+remaining beta work and the [deployment runbook](easypanel.md) for release
+evidence.
 
 ## Quality gates
 

@@ -48,6 +48,8 @@ Both endpoints return a summary with the latest vote, `yesCount`, `noCount`,
 `reportedAt`, and `expiresAt`. An empty location has `available: null`.
 
 Health probes are available at `/health/live` and `/health/ready`.
+`GET /release` returns only the public full Git revision as
+`{"revision":"<sha>"}`; it does not alter the health response contract.
 
 ## Commands
 

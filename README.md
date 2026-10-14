@@ -77,16 +77,17 @@ migration procedure and post-deploy smoke test.
 
 The current release includes PostgreSQL persistence and integration tests,
 anonymous per-browser voting, per-bathroom cooldowns, HH5 geolocation
-authorization, privacy-safe geolocation failure metrics, a provisioned Grafana
-dashboard, Prometheus alert rules and staging smoke tests.
+authorization, privacy-safe geolocation failure metrics, Grafana dashboards,
+production backups and restore verification
+([#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19)),
+Alertmanager delivery and incident runbooks
+([#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21)), and
+browser-to-database tracing
+([#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23)).
 
-Remaining work is tracked in GitHub: production Analytics configuration
-([#1](https://github.com/danilomoreiraai/skip-the-trip/issues/1)), database
-backups ([#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19)),
-production alert delivery verification
-([#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21)), production
-privacy ownership
-([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)) and
-server-side trace propagation
-([#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23)). Session
-replay and advertising remain outside the approved scope.
+The remaining tracked work includes production Analytics collection evidence
+([#1](https://github.com/danilomoreiraai/skip-the-trip/issues/1)) and privacy
+ownership/legal review
+([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)).
+See [release verification](docs/easypanel.md#5-verification) before beta sessions.
+Session replay and advertising remain outside the approved scope.

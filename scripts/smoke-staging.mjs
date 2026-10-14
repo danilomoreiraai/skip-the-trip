@@ -34,6 +34,18 @@ function assert(condition, message) {
 console.log(`Smoke testing ${baseUrl}`);
 const health = await request("/health/ready");
 assert(health.status === "ready", "API readiness probe did not return ready");
+const expectedRevision = process.env.APP_REVISION ?? "local";
+assert(/^(?:[0-9a-f]{40}|local)$/.test(expectedRevision), "Expected a full Git SHA or local revision");
+const apiRelease = await request("/release");
+const webReleaseResponse = await fetch(new URL("../release.json", `${baseUrl}/`), {
+  signal: AbortSignal.timeout(10_000),
+});
+assert(webReleaseResponse.ok, "Web release endpoint failed");
+const webRelease = await webReleaseResponse.json();
+assert(apiRelease.revision === expectedRevision, "API revision differs from the approved source");
+assert(webRelease.revision === expectedRevision, "Web revision differs from the approved source");
+assert(Object.keys(apiRelease).join() === "revision", "API release includes unexpected fields");
+assert(Object.keys(webRelease).join() === "revision", "Web release includes unexpected fields");
 
 const query = new URLSearchParams(bathroom);
 const before = await request(`/reports?${query}`);

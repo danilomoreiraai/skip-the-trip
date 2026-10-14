@@ -8,6 +8,8 @@ COPY drizzle ./drizzle
 RUN npm run build
 
 FROM node:24-alpine AS production
+ARG APP_REVISION=local
+LABEL org.opencontainers.image.revision=$APP_REVISION
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --chown=node:node package*.json ./

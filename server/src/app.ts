@@ -28,6 +28,7 @@ type AppOptions = {
     | "LOCATION_LONGITUDE"
     | "LOCATION_RADIUS_METERS"
     | "NODE_ENV"
+    | "APP_REVISION"
   >;
   reportsRepository: ReportsRepository;
   locationAuthorizationsRepository: LocationAuthorizationsRepository;
@@ -62,6 +63,7 @@ export async function buildApp({
   await app.register(rateLimit, { max: 100, timeWindow: "1 minute" });
 
   app.get("/health/live", async () => ({ status: "ok" }));
+  app.get("/release", async () => ({ revision: config.APP_REVISION }));
   app.get("/health/ready", async (_request, reply) => {
     try {
       await reportsRepository.ping();
