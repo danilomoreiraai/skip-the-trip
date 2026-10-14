@@ -44,6 +44,10 @@ const envSchema = z.object({
   ),
   SENTRY_ENVIRONMENT: z.string().min(1).default("development"),
   SENTRY_RELEASE: z.string().min(1).default("local"),
+  APP_REVISION: z
+    .string()
+    .regex(/^(?:[0-9a-f]{40}|local)$/)
+    .default("local"),
   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: z.preprocess(
     (value) => (value === "" ? undefined : value),
     z.string().url().optional(),

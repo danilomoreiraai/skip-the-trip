@@ -90,6 +90,7 @@ function createFakeAuthorizationsRepository(): LocationAuthorizationsRepository 
 
 const config = {
   NODE_ENV: "test" as const,
+  APP_REVISION: "5ca81fe9427496bfac3dcb1708edcee8265a92fb",
   CORS_ORIGIN: "http://localhost:5173",
   LOG_LEVEL: "silent" as const,
   REPORT_WINDOW_MINUTES: 30,
@@ -245,6 +246,10 @@ describe("location-authorized reports", () => {
       headers: { "x-request-id": "test-request-id" },
     });
     expect(health.headers["x-request-id"]).toBe("test-request-id");
+    expect(health.json()).toEqual({ status: "ok" });
+    const release = await app.inject({ method: "GET", url: "/release" });
+    expect(release.statusCode).toBe(200);
+    expect(release.json()).toEqual({ revision: config.APP_REVISION });
     expect(
       (await app.inject({ method: "GET", url: "/health/ready" })).statusCode,
     ).toBe(200);

@@ -169,7 +169,7 @@ docker compose --env-file .env.staging -f compose.staging.yml down
 ```
 
 Do not add `-v` to `down` unless deleting the staging database is intentional.
-Production follow-ups are tracked explicitly: backups and restore verification
-in [#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19), and alert
-delivery plus incident runbooks in
+Production backup and restore verification was completed in
+[#19](https://github.com/danilomoreiraai/skip-the-trip/issues/19); alert delivery
+and incident runbooks were completed in
 [#21](https://github.com/danilomoreiraai/skip-the-trip/issues/21).
