@@ -167,6 +167,45 @@ test("keeps the vote controls visually separated", async ({ page }) => {
   ).toBeGreaterThanOrEqual(32);
 });
 
+test("lookup remains operable at 320px with reduced motion and explicit unknown status", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await select(page);
+
+  await expect(
+    page.getByRole("progressbar", { name: "100% complete" }),
+  ).toBeVisible();
+  await expect(page.getByText("No recent information")).toBeVisible();
+  await expect(page.getByText("Be the first to report")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Yes, available" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("button", { name: "No, unavailable" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("link", { name: "Privacy", exact: true }),
+  ).toBeVisible();
+
+  const layout = await page.evaluate(() => ({
+    viewportWidth: window.innerWidth,
+    documentWidth: document.documentElement.scrollWidth,
+    smallestTarget: Math.min(
+      ...Array.from(document.querySelectorAll("button:not(:disabled)"))
+        .filter((element) => element.getBoundingClientRect().width > 0)
+        .map((element) => {
+          const bounds = element.getBoundingClientRect();
+          return Math.min(bounds.width, bounds.height);
+        }),
+    ),
+  }));
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.smallestTarget).toBeGreaterThanOrEqual(24);
+});
+
 test("selection, latest vote, isolation and persistence", async ({ page }) => {
   await page.goto("/");
   await expect(
