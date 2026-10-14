@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Accessibility } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import {
+  type KeyboardEvent,
+  lazy,
+  type ReactNode,
+  Suspense,
+  type SyntheticEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 import { StatusPanel } from "./components/StatusPanel";
 import { AppSkeleton, Button, Selector, Spinner, Toast } from "./components/ui";
@@ -52,6 +61,66 @@ const NotFound = lazy(() =>
     default: module.NotFound,
   })),
 );
+function ModalDialog({
+  className,
+  labelledBy,
+  onCancel,
+  returnFocusTo,
+  children,
+}: {
+  className: string;
+  labelledBy: string;
+  onCancel: (event: SyntheticEvent<HTMLDialogElement>) => void;
+  returnFocusTo?: HTMLElement | null;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const containFocus = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== "Tab") return;
+    const buttons = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        "button:not(:disabled)",
+      ),
+    );
+    const first = buttons[0];
+    const last = buttons.at(-1);
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  useEffect(() => {
+    const dialog = ref.current;
+    const previouslyFocused =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialog?.showModal();
+    dialog?.querySelector<HTMLElement>("[data-modal-initial-focus]")?.focus();
+    return () => {
+      if (dialog?.open) dialog.close();
+      const focusTarget = returnFocusTo?.isConnected
+        ? returnFocusTo
+        : previouslyFocused;
+      if (focusTarget?.isConnected) focusTarget.focus();
+    };
+  }, [returnFocusTo]);
+  return (
+    <dialog
+      ref={ref}
+      className={className}
+      aria-labelledby={labelledBy}
+      onCancel={onCancel}
+      onKeyDown={containFocus}
+    >
+      {children}
+    </dialog>
+  );
+}
 function CategoryIcon({ category }: { category: string }) {
   if (category === "Accessible")
     return (
@@ -77,6 +146,7 @@ function Home() {
   } | null>(null);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
   const locationJustVerified = useRef(false);
+  const voteTrigger = useRef<HTMLButtonElement | null>(null);
   const client = useQueryClient();
   const parsed = bathroomSchema.safeParse(selection);
   const bathroom = parsed.success ? parsed.data : null;
@@ -314,7 +384,8 @@ function Home() {
                 mutation.isPending ||
                 now < voteCooldownUntil
               }
-              onClick={() => {
+              onClick={(event) => {
+                voteTrigger.current = event.currentTarget;
                 if (bathroom) vote(bathroom, true);
               }}
             >
@@ -343,7 +414,8 @@ function Home() {
                 mutation.isPending ||
                 now < voteCooldownUntil
               }
-              onClick={() => {
+              onClick={(event) => {
+                voteTrigger.current = event.currentTarget;
                 if (bathroom) vote(bathroom, false);
               }}
             >
@@ -380,14 +452,20 @@ function Home() {
           />
         </div>
       </section>
-      {toast && <Toast message={toast} onClose={() => setToast("")} />}
+      {toast && !pendingVote && (
+        <Toast message={toast} onClose={() => setToast("")} />
+      )}
       {pendingVote && (
-        <section
+        <ModalDialog
           className="location-dialog"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="location-dialog-title"
+          labelledBy="location-dialog-title"
+          returnFocusTo={voteTrigger.current}
+          onCancel={(event) => {
+            if (verifyingLocation) event.preventDefault();
+            else setPendingVote(null);
+          }}
         >
+          {toast && <Toast message={toast} onClose={() => setToast("")} />}
           <h2 id="location-dialog-title">Confirm your location to vote</h2>
           <p>
             We discard your coordinates after verification. Verification lasts 4
@@ -396,6 +474,7 @@ function Home() {
           <div>
             <button
               type="button"
+              data-modal-initial-focus
               disabled={verifyingLocation}
               onClick={() => void requestLocationAndVote()}
             >
@@ -411,7 +490,7 @@ function Home() {
               Cancel
             </button>
           </div>
-        </section>
+        </ModalDialog>
       )}
     </m.main>
   );
@@ -472,11 +551,10 @@ export function App() {
         </footer>
       </m.div>
       {analyticsConsent === null && (
-        <section
+        <ModalDialog
           className="consent-popup"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="analytics-consent-title"
+          labelledBy="analytics-consent-title"
+          onCancel={(event) => event.preventDefault()}
         >
           <p id="analytics-consent-title">
             This site uses Google Analytics to count visits. It shows no ads and
@@ -485,6 +563,7 @@ export function App() {
           <div>
             <button
               type="button"
+              data-modal-initial-focus
               onClick={() => changeAnalyticsConsent("accepted")}
             >
               Accept
@@ -496,7 +575,7 @@ export function App() {
               Decline
             </button>
           </div>
-        </section>
+        </ModalDialog>
       )}
     </div>
   );
