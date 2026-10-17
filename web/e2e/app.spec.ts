@@ -2,7 +2,9 @@ import { expect, type Page, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("skip-the-trip:analytics-consent:v1", "accepted");
+    if (!sessionStorage.getItem("privacy-choice-test")) {
+      localStorage.setItem("skip-the-trip:analytics-consent:v1", "accepted");
+    }
     let geolocationAttempts = 0;
     Object.defineProperty(navigator, "geolocation", {
       value: {
@@ -470,4 +472,56 @@ test("asks for analytics consent and respects decline", async ({ page }) => {
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("dialog")).toHaveCount(0);
+});
+
+test("privacy choice shows its selected state and restores it after reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.evaluate(() => {
+    sessionStorage.setItem("privacy-choice-test", "yes");
+    localStorage.removeItem("skip-the-trip:analytics-consent:v1");
+  });
+  await page.goto("/privacy");
+
+  const accept = page.getByRole("button", { name: "Accept analytics" });
+  const decline = page.getByRole("button", { name: "Decline analytics" });
+  await expect(page.getByText("Current analytics choice:")).toContainText(
+    "not selected",
+  );
+  await expect(accept).toHaveAttribute("aria-pressed", "false");
+  await expect(decline).toHaveAttribute("aria-pressed", "false");
+  await expect(accept).not.toContainText("✓");
+  await expect(decline).not.toContainText("✓");
+
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Decline" })
+    .click();
+  await expect(decline).toHaveAttribute("aria-pressed", "true");
+  await expect(decline).toContainText("✓");
+  await expect(accept).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText("Current analytics choice:")).toContainText(
+    "declined",
+  );
+
+  await accept.click();
+  await expect(accept).toHaveAttribute("aria-pressed", "true");
+  await expect(accept).toContainText("✓");
+  await expect(decline).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText("Current analytics choice:")).toContainText(
+    "accepted",
+  );
+  await page.reload();
+  await expect(accept).toHaveAttribute("aria-pressed", "true");
+  await expect(accept).toContainText("✓");
+
+  await decline.click();
+  await page.reload();
+  await expect(decline).toHaveAttribute("aria-pressed", "true");
+  await expect(decline).toContainText("✓");
+  await expect(accept).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByText("Current analytics choice:")).toContainText(
+    "declined",
+  );
 });

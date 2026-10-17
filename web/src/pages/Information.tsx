@@ -77,10 +77,20 @@ export function Privacy({
       </p>
       <fieldset className="privacy-actions">
         <legend className="sr-only">Analytics preference</legend>
-        <button type="button" onClick={() => onConsentChange("accepted")}>
+        <button
+          type="button"
+          aria-pressed={consent === "accepted"}
+          onClick={() => onConsentChange("accepted")}
+        >
+          {consent === "accepted" && <span aria-hidden="true">✓ </span>}
           Accept analytics
         </button>
-        <button type="button" onClick={() => onConsentChange("declined")}>
+        <button
+          type="button"
+          aria-pressed={consent === "declined"}
+          onClick={() => onConsentChange("declined")}
+        >
+          {consent === "declined" && <span aria-hidden="true">✓ </span>}
           Decline analytics
         </button>
       </fieldset>
