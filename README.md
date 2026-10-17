@@ -90,4 +90,7 @@ The remaining tracked work includes production Analytics collection evidence
 ownership/legal review
 ([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)).
 See [release verification](docs/easypanel.md#5-verification) before beta sessions.
+Use the [closed-beta operations playbook](docs/closed-beta-operations.md) for
+session preflight, monitoring, participant support, stop decisions, rollback,
+and shutdown.
 Session replay and advertising remain outside the approved scope.
