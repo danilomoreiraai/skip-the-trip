@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Accessibility } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import {
   type KeyboardEvent,
@@ -121,15 +120,20 @@ function ModalDialog({
     </dialog>
   );
 }
-function CategoryIcon({ category }: { category: string }) {
-  if (category === "Accessible")
-    return (
-      <Accessibility className="bathroom-icon" size={40} strokeWidth={1.8} />
-    );
+const categoryIcons: Record<Bathroom["category"], string> = {
+  Female: "/assets/bathroom-female.png",
+  Male: "/assets/bathroom-male.png",
+  Accessible: "/assets/bathroom-accessible.png",
+};
+function CategoryIcon({ category }: { category: Bathroom["category"] }) {
   return (
-    <span
-      className={`bathroom-icon person-icon ${category.toLowerCase()}`}
+    <img
+      className="bathroom-icon"
+      src={categoryIcons[category]}
+      alt=""
       aria-hidden="true"
+      width={48}
+      height={48}
     />
   );
 }
