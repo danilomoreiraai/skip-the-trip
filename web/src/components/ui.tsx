@@ -143,6 +143,7 @@ export function Toast({
         <span>{message}</span>
         <button
           type="button"
+          className="toast-close"
           onClick={onClose}
           aria-label="Dismiss notification"
         >
