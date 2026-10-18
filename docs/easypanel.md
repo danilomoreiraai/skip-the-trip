@@ -34,9 +34,17 @@ every placeholder. `APP_DOMAIN` is a hostname only, without `https://` or a
 trailing slash. Keep the GlitchTip DSNs and database URL in EasyPanel; never
 commit the populated values.
 
-The checked-in example currently points to the temporary physical-test center
-in Cobh. Restore the official HH5 coordinates after the on-site test; the
-application image does not need to change when only these values change.
+The checked-in examples use the confirmed HH5 center from
+`server/src/domain/locations.ts`. Production environment overrides must match
+that center before sharing the beta link; do not retain temporary physical-test
+coordinates. The examples use a 500 m radius and 100 m maximum reported accuracy.
+Check the actual provider values separately: an environment override takes
+precedence over the examples and server defaults.
+
+Existing authorizations remain associated with HH5 until their normal four-hour
+expiry; changing the center does not invalidate authorizations issued under the
+previous configuration. A successful synthetic location check is not real GPS
+or physical-device acceptance.
 
 For distributed tracing, set `VITE_OTEL_EXPORTER_OTLP_ENDPOINT` to a public
 HTTPS OTLP/HTTP traces endpoint reachable by browsers and
