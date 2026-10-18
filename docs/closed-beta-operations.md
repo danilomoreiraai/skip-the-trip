@@ -1,172 +1,120 @@
 # Closed-beta operations playbook
 
-Use this checklist for a short, supervised Skip The Trip beta session. Danilo
-Moreira is both the session operator and the incident decision owner: he starts
-and ends the session, monitors it, acknowledges alerts, and decides whether to
-pause, roll back, or resume. Do not start a session without him available for
-the full window. Record the session window in Europe/Dublin time and evidence
-timestamps in UTC.
+## Scope and owner
 
-The existing [incident response](incident-response.md),
-[deployment and release verification](easypanel.md#5-verification),
-[backup and recovery](backup-recovery.md), and
-[privacy governance](privacy-governance.md) runbooks remain authoritative for
-their respective actions. This playbook joins those actions into one session
-procedure; it does not change alert thresholds, backup schedules, retention
-jobs, or production configuration.
+As agreed on 18 October 2026 in [#45](https://github.com/danilomoreiraai/skip-the-trip/issues/45),
+Danilo Moreira shares the application link in a group. People choose whether to
+participate spontaneously. There is no registration, participant roster, minimum
+headcount, supervised session, or mandatory device/OS/browser collection. This is
+an experimental portfolio application; functional quality and privacy remain
+required. HH5 contribution restrictions remain unchanged. Sharing in a group is
+a distribution choice, not an access-control boundary: the public link can be forwarded.
 
-## 1. Before inviting participants
+Danilo owns feedback review and pause/resume decisions. Record the distribution
+date and a next review date in Europe/Dublin time in #35; use UTC for technical
+evidence. No review date is assumed until recorded. This does not promise continuous
+staffing or an immediate support response. Existing service monitoring, alerts,
+backup, retention and incident controls remain in place.
 
-1. Set the start and end time, participant group, operator, and a reachable
-   private escalation route. Prefer Monday–Friday, 06:00–18:00 Europe/Dublin,
-   when Alertmanager and backup-monitor deliver Telegram notifications. If the
-   session must run outside that window, Danilo must inspect EasyPanel service
-   status, public probes, Prometheus alerts, backup-monitor status, and both
-   mailboxes at the start and at least every 10 minutes. Stop immediately if
-   he cannot maintain that watch: detection continues but Telegram delivery is
-   deferred until the next delivery window.
-2. In EasyPanel, confirm the approved source SHA and successful deployment,
-   completed `migrate` task, healthy web/API/PostgreSQL/Prometheus/Alertmanager/
-   backup-monitor/retention-scheduler services, and no unresolved critical
-   alert. Check the latest completed backup in the Backups Log and private remote
-   storage, its age against the 24-hour RPO, and the most recent isolated
-   restore-drill record. A started backup is not a completed backup. Do not
-   restore or run a destructive drill in production for this preflight.
-3. Set `APP_REVISION` in the operator shell to the approved deployed SHA and run
-   `VERIFY_BASE_URL=https://skipthetrip.info node scripts/verify-release.mjs`.
-   Confirm `/privacy` opens on the public site and links to the current live
-   notice. Make one representative read-only app check. Check that production
-   location settings match the approved beta venue before inviting anyone;
-   do not publish exact coordinates in evidence.
-4. Record the deployed SHA and a **previously deployed, verified, migration-
-   compatible** rollback SHA with its EasyPanel history entry. Inspect the
-   saved Compose environment for that release privately. The last verified
-   candidate at the 17 October 2026 tabletop was
-   `0a969bae112aa648d0c5a00605443c7fcb7d73db` (issue #39). Do not use it
-   blindly after later migrations or configuration changes. If no compatible
-   rollback is available, do not start the beta.
-5. Open and monitor `support@skipthetrip.info` and
-   `privacy@skipthetrip.info`. Check inbound access and notifications before
-   starting; do not send a test containing participant data. Record only a
-   pass/fail and timestamp in the session log. Privacy requests follow the
-   [rights workflow](privacy-governance.md#rights-request-workflow).
-6. Send the participant wording below with the session window, then record
-   start time and release in the private session log. Keep participant contact
-   details out of GitHub.
+The [incident response](incident-response.md), [release verification](easypanel.md#5-verification),
+[backup and recovery](backup-recovery.md), and [privacy governance](privacy-governance.md)
+runbooks remain authoritative for their controls.
 
-> This is a short, supervised test of Skip The Trip, not an emergency service.
-> If something fails, stop using it and email support@skipthetrip.info with
-> what you tried, device/OS/browser, approximate time, and what happened. Do
-> not send your exact location, cookies, identifiers, credentials, or raw logs.
-> For privacy questions or deletion requests, email privacy@skipthetrip.info.
-> Read the live privacy notice at https://skipthetrip.info/privacy before
-> participating. We may stop the test while we investigate or recover.
+## 1. Before sharing the link
 
-## 2. During the session
+- Record the approved deployed SHA, green CI, successful provider deployment and
+  migration/container health. Run `APP_REVISION=<approved-full-sha> VERIFY_BASE_URL=https://skipthetrip.info node scripts/verify-release.mjs`.
+- Check public lookup, consent accept/decline and persistence, privacy/support
+  links, and core loading/error/retry behavior. Use existing automated coverage
+  and focused manual checks. Record the method and revision for each result.
+- Check existing geolocation authorization, cooldown, freshness, idempotency and
+  persistence coverage. Record real GPS/permission and assistive-technology
+  checks only if performed. Untested platforms remain **not verified**, without
+  requiring a participant/device matrix or task-completion percentages.
+- Check current alerts, backup recency against the existing 24-hour RPO,
+  retention status, mailbox access and a known-good migration-compatible rollback
+  revision in provider history. No destructive production drill is required.
+- Record known limitations and the decision in #35. Any known P0/P1 or material
+  privacy/data-integrity concern blocks sharing. Missing device evidence alone
+  is an explicit coverage limitation, not a passed test or automatic blocker.
+- Share the short notice below through the group when the owner decides to open
+  the beta. Procedure preparation does not prove that the notice was sent.
 
-- Danilo watches the operations Telegram chat, Prometheus/Grafana health and
-  alerts, EasyPanel service state, public health/readiness, and both mailboxes.
-  Check at start, after a release or configuration change, after any alert or
-  participant report, and at least every 30 minutes during the staffed
-  delivery window. Apply the 10-minute direct-watch interval outside it.
-- Acknowledge a critical alert within 10 minutes and a warning within 30
-  minutes using the [incident response procedure](incident-response.md#first-response).
-  Danilo owns the stop/continue decision for every alert. If he cannot
-  acknowledge within the required window or determine safe operation, stop
-  the beta; do not wait for a deferred notification. A missing alert feed is
-  itself a stop condition. Do not silence an alert just to continue a session.
-- Read support and privacy mail during each monitoring pass and at shutdown.
-  Acknowledge a participant report during the staffed session when practical,
-  give a safe workaround only after confirming it, and tell affected
-  participants when a session is paused or ended. Route privacy requests
-  privately to the rights workflow; do not copy them into an issue.
-- Capture only release SHA, approximate UTC time, task attempted, device/OS/
-  browser, expected and observed behavior, severity, owner, and retest need.
-  Request a screenshot only if it can be cropped or redacted safely. Do not put
-  exact coordinates, cookies, anonymous IDs, credentials, private contact
-  details, raw logs, or backup contents in Telegram, issues, or PRs. Use the
-  feedback and triage workflow in [issue #34](https://github.com/danilomoreiraai/skip-the-trip/issues/34)
-  when available; until then, use the monitored support mailbox and create a
-  sanitized GitHub issue for each accepted code or configuration change.
+> Skip The Trip is an experimental portfolio app. Participation is optional:
+> you can try it without registering or telling me who you are or which device
+> you use. Contributions require being within the permitted HH5 area. If a
+> feature fails, you can optionally email support@skipthetrip.info with what
+> you tried and what happened. Device details are optional. Please do not send
+> exact location, cookies, identifiers, credentials or raw logs. Support is
+> reviewed periodically. Privacy information: https://skipthetrip.info/privacy;
+> privacy requests: privacy@skipthetrip.info. The experiment may be paused.
 
-## 3. Stop, recover, and decide whether to resume
+## 2. Feedback and review
 
-Stop inviting participants and announce a pause for any suspected privacy or
-security exposure, data corruption or unexpected deletion, unavailable public
-app/API/readiness, failed location authorization at the approved venue, missing
-monitoring or mailbox coverage, backup older than the 24-hour RPO, or a critical
-journey blocked on a supported device. A critical alert or P0/P1 participant
-report also stops the beta pending investigation. For a warning or recoverable
-P2/P3 issue, Danilo records the evidence, checks scope and trend, and makes an
-explicit stop/continue decision. A continue decision never overrides the stop
-conditions above.
+Use [the feedback template and triage rubric](beta-feedback.md). Keep support
+feedback in `support@skipthetrip.info`; do not require reports in the group or
+identify silent participants. Privacy requests stay in `privacy@skipthetrip.info`
+and follow the existing rights workflow. Email is voluntary and can reveal the
+sender's address; never promise anonymous email feedback.
 
-1. Record UTC time, release, symptom, affected scope, and decision. Tell
-   participants the beta is paused through the agreed contact route. Follow
-   the relevant [incident procedure](incident-response.md); contain a privacy
-   or database event before considering an application rollback.
-2. If a newly deployed application revision caused the failure, confirm the
-   recorded known-good SHA, its deployment/image provenance and migration
-   compatibility. In EasyPanel, select that source revision and its recorded
-   Compose environment, set `APP_REVISION` to the same SHA, and deploy. Check
-   the completed migration task and healthy containers in deployment history.
-   Do not select an unverified Git parent merely because it is older.
-3. Run the public release verifier against the rollback SHA. Then require two
-   successful public `/api/health/ready` checks, healthy Prometheus target and
-   resolved alert, plus a representative read-only app flow. Verify the
-   affected behavior with an approved device if the incident involved
-   geolocation or accessibility. Record the EasyPanel entry and public result
-   without sensitive payloads.
-4. If data loss or a failed migration is suspected, stop writes and use the
-   [backup and recovery runbook](backup-recovery.md#production-recovery). An
-   application rollback is not a database restore. Restore in isolation first;
-   any production data switch is a separate incident decision.
-5. Danilo resumes only after the root cause or safe containment is understood,
-   the stop condition is cleared, monitoring and mailboxes are working, and
-   the affected flow is retested. Otherwise end the session and track the
-   defect. Record the decision and notify participants.
+Review both mailboxes and existing monitoring at each recorded review, after a
+release, and when an alert or serious report is received. Existing incident alert
+acknowledgement targets remain unchanged. Telegram notifications currently use
+Monday–Friday, 06:00–18:00 Europe/Dublin; alerts outside that window may be
+notified later. Do not promise real-time supervision. Check public health and
+current alerts before further sharing after an unreviewed interval.
 
-## 4. End the session and clear beta material
+Track accepted defects with release, severity, owner, expected/observed behavior
+and retest requirement. Device context is optional and may be recorded as unknown.
+No feedback is not evidence of successful use, zero defects or participant counts.
 
-1. Stop invitations, check unresolved alerts and both mailboxes, and tell
-   participants the session is over. Record end time, release, counts of
-   reports by severity, decisions, and links to sanitized follow-up issues.
-2. Confirm public health/readiness, monitoring, backup recency, and the
-   retention-scheduler's latest privacy-safe success event. Hand any open
-   incident to the [incident response runbook](incident-response.md) with a
-   named owner; a session ending does not close an incident.
-3. Keep raw feedback in the monitored mailbox only while needed to answer and
-   investigate it. Within 30 days after closing the beta, review and delete
-   resolved beta feedback and participant contact lists, unless an active
-   rights request, incident, or legal obligation requires a documented hold.
-   Keep sanitized issue summaries and operational decisions without contact
-   details. Application reports, authorization rows, metrics, backups, and
-   email rights requests follow their existing
-   [retention rules](privacy-governance.md#processing-inventory); do not
-   manually purge the production database as beta cleanup.
+## 3. Pause, recover and resume
 
-## Promotion boundary and session record
+P0/P1 findings, suspected coordinate exposure, vote loss/duplication,
+cross-bathroom cooldown contamination, recurring 5xx/readiness failure or missing
+recovery controls require pausing the experiment pending investigation. Stop
+inviting use and post a pause notice in the same group. This does not revoke
+existing links or disable writes; if technical containment is needed, follow the
+incident runbook and record the action. Do not claim a pause notice stops access.
 
-[Issue #1](https://github.com/danilomoreiraai/skip-the-trip/issues/1) remains
-open for Analytics completion and production evidence. A supervised beta may run
-without relying on visit counts; analytics must remain consent-gated. [Issue
-#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22) tracks the
-remaining privacy/legal review. The published notice and monitored privacy
-mailbox are required even for this beta. Resolve #22 and the final beta gates
-before wider public promotion; do not present the legal review as complete.
+- Record UTC time, release, symptom, scope and decision without participant data.
+- Follow the incident runbook; contain a privacy/database event before considering
+  application rollback. Use only a previously deployed, verified, migration-compatible
+  revision and its saved environment. Check provider deployment, migration and
+  container health, then run the public release verifier for that SHA.
+- Require two successful readiness checks, resolved relevant alerts, and a focused
+  retest of the failure before resuming. An application rollback is not a database
+  restore; use the backup runbook for data recovery.
+- Record the outcome and announce resumption or termination in the same group.
+  P2/P3 may remain with an owner, mitigation and planned retest/review date.
 
-Keep the session log privately. A GitHub closure note may contain only the
-redacted fields below, with links to CI and provider history rather than
-credentials or screenshots containing participant data:
+## 4. Review, end and retention
 
-| Field | Record |
-| --- | --- |
-| Window, operator, incident decision owner | Europe/Dublin start/end; Danilo Moreira; Danilo Moreira |
-| Approved release and rollback | Full SHA of each; rollback compatibility and history checked |
-| Preflight | Public verifier; services/alerts; latest completed backup and restore-drill record; both mailboxes; live `/privacy` |
-| Monitoring | UTC check times; alert name/severity; acknowledgement; stop/continue decision |
-| Recovery | Pause time; deployed SHA; migration/container state; two readiness checks; alert resolution; affected-flow retest |
-| Shutdown | End time; unresolved incidents and owners; privacy-safe retention/backup status; feedback deletion review date |
+At the recorded review date, inspect functionality, optional feedback, open
+defects and existing operational health. Record continue/pause/end with evidence
+in #35. Do not invent participation totals, device coverage or completion rates.
+If ending, post a notice in the group and hand unresolved incidents to their owner.
+
+Keep raw feedback only while needed to respond and investigate. Within 30 days
+after closing the beta, review and delete resolved beta feedback, unless an active
+rights request, incident or legal obligation requires a documented hold. Do not
+create participant contact lists. Retain sanitized issue summaries without contact
+details. Application data, backups and rights requests follow their existing
+[retention rules](privacy-governance.md#processing-inventory).
+
+## Promotion boundary and evidence
+
+#1 remains open for consented analytics collection evidence; analytics is not a
+required measure of participation. #22 retains its privacy/legal review scope.
+This experimental beta does not certify commercial, broad public-launch, legal
+or complete accessibility readiness. The live notice and privacy contact remain
+required. A concrete privacy concern blocks the experiment regardless of its size.
+
+Record revision, CI/provider/public checks, manual/automated results, known
+unverified coverage, defect links, owner and next review date. Repository procedures
+are not proof of mailbox checks, real-device tests, group notification or actual
+participation. The record below describes the earlier supervised-session plan;
+it is historical evidence, not the current beta procedure.
 
 ## Tabletop dry run — 17 October 2026
 
