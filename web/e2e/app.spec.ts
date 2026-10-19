@@ -13,6 +13,19 @@ test.beforeEach(async ({ page }) => {
           error?: PositionErrorCallback | null,
         ) {
           geolocationAttempts += 1;
+          const failureCode = new URLSearchParams(window.location.search).get(
+            "geo-failure",
+          );
+          if (failureCode) {
+            error?.({
+              code: Number(failureCode),
+              message: "Synthetic geolocation failure",
+              PERMISSION_DENIED: 1,
+              POSITION_UNAVAILABLE: 2,
+              TIMEOUT: 3,
+            });
+            return;
+          }
           if (
             window.location.search.includes("geo-retry") &&
             geolocationAttempts === 1
@@ -329,6 +342,63 @@ test("retries with network location when high accuracy is unavailable", async ({
     "1",
   );
 });
+
+for (const scenario of [
+  {
+    code: 1,
+    name: "permission denial",
+    message:
+      "Allow location access to vote. You can continue viewing bathroom statuses.",
+  },
+  {
+    code: 2,
+    name: "position unavailable",
+    message: "We could not retrieve your location. Try again.",
+  },
+  {
+    code: 3,
+    name: "timeout",
+    message: "We could not retrieve your location. Try again.",
+  },
+]) {
+  test(`keeps lookup available after location ${scenario.name}`, async ({
+    page,
+  }) => {
+    let verificationRequests = 0;
+    await page.route(
+      "http://localhost:3333/locations/HH5/verify-location",
+      async (route) => {
+        verificationRequests += 1;
+        await route.abort();
+      },
+    );
+    await page.route(
+      "http://localhost:3333/client-events/geolocation",
+      (route) => route.fulfill({ status: 204 }),
+    );
+    await page.goto(`/?geo-failure=${scenario.code}`);
+    await select(page);
+    await page.getByRole("button", { name: "Yes, available" }).click();
+    await authorizePendingVote(page);
+
+    await expect(
+      page.getByRole("status").filter({ hasText: scenario.message }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Confirm location" }),
+    ).toBeEnabled();
+    expect(verificationRequests).toBe(0);
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(page.getByText("No recent information")).toBeVisible();
+    await expect(page.getByRole("status", { name: "0 YES votes" })).toHaveText(
+      "0",
+    );
+    await expect(
+      page.getByRole("button", { name: "Yes, available" }),
+    ).toBeEnabled();
+  });
+}
 
 test("refreshes an open counter when a third person votes", async ({
   page,

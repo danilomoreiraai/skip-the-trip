@@ -1,68 +1,56 @@
-# Beta accessibility and task-usability acceptance (#29)
+# Experimental beta: accessibility and authorization review
 
-This is the working protocol and evidence register for [issue #29](https://github.com/danilomoreiraai/skip-the-trip/issues/29). Keep the device and participant fields blank until sessions happen. Browser automation is supporting evidence only; it cannot establish VoiceOver, TalkBack, or participant completion rates.
+This record supports [#29](https://github.com/danilomoreiraai/skip-the-trip/issues/29) and [#30](https://github.com/danilomoreiraai/skip-the-trip/issues/30), under the voluntary portfolio-beta scope approved in [#45](https://github.com/danilomoreiraai/skip-the-trip/issues/45). It replaces the unmerged supervised-session protocol from PR #40. No participant roster, device matrix, completion rates or mandatory screen-reader campaign is required. Untested coverage remains unverified, never passed.
 
-## Before a session
+## Revision and method
 
-1. Use the release revision and device/network entries from the [real-device matrix (#28)](https://github.com/danilomoreiraai/skip-the-trip/issues/28). Record the public release revision shown by the deployed app. Do not use a local build as production evidence.
-2. Explain that status lookup does not need location permission; voting does. Conduct a vote only with an eligible participant at HH5. Follow the separate [location validation (#30)](https://github.com/danilomoreiraai/skip-the-trip/issues/30) for GPS behavior.
-3. Obtain consent to observe the task. Use participant codes, never names or contact details in this document. Record the browser mode, assistive technology and settings used.
-4. Do not capture coordinates, browser identifiers, cookies, credentials, email messages, or unredacted browser logs. Screenshots are optional and must be checked before sharing.
+Review date: **19 October 2026**, Europe/Dublin. Observed production revision: `dcb3f3921098f8ed106ec9763e376940fd71b02c`. Public web/API revision, liveness and readiness checks passed. The production release's [Quality run](https://github.com/danilomoreiraai/skip-the-trip/actions/runs/39272886407) passed, including 33 server unit tests and seven PostgreSQL integration cases.
 
-## Session header (one row per device and participant)
+PR #40 updates the preparatory work against that release, updates this record and adds tests only. It does not change the application's runtime code, location configuration, privacy behavior or database schema. Its own Quality checks verify the final test/documentation revision; do not describe that revision as deployed unless it is separately published.
 
-| Session code | Date/time and time zone | Release revision | Device / OS | Browser / version | Browser or home-screen mode | Network | Assistive technology / text size / motion setting | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+The local UI suite passed **32/32** Chromium cases across desktop and mobile viewport/touch emulation. The new cases exercise 320 CSS px reflow and permission-denied, position-unavailable and timeout recovery. Reports, authorization APIs and browser geolocation are synthetic in these tests; a mocked success is not a real GPS or production-vote result.
 
-## Accessibility checklist
+Local location-domain tests passed **12/12**. The local route-test runner did not complete and was stopped; no local route-test pass is claimed. Use the final PR's Quality CI for the cookie-recovery regression and complete route/database results.
 
-For each checked path, record **Pass**, **Fail**, **Not tested**, or **N/A**, plus a short observation and linked defect. Repeat the critical paths with VoiceOver on iOS and TalkBack on Android. Test touch exploration and swipe navigation as well as keyboard navigation where a physical keyboard is available.
+## Accessibility and clarity (#29)
 
-| Check | Expected observation | Result / session / issue |
-| --- | --- | --- |
-| First visit and consent | Dialog is announced with a name; focus enters it, stays there, and follows the explicit choice. | Pending; [focus defect #39](https://github.com/danilomoreiraai/skip-the-trip/issues/39) |
-| Building, floor and category | Each group and option has an understandable name, role, selected state and logical order. Unavailable buildings are explained. | Pending |
-| Lookup without location permission | Status is reachable and understandable without granting location. Empty information is not interpreted as available. | Pending |
-| Status and counters | Available, unavailable, unknown, vote counts, freshness and meter value are spoken meaningfully; color is not the only cue. | Pending |
-| Yes/No voting | Both actions are distinct, reachable and large enough to activate. The location request is explained before the browser prompt. | Pending |
-| Location dialog and failures | Focus is contained; permission denied, unavailable position and retry have understandable next steps. | Pending; [focus defect #39](https://github.com/danilomoreiraai/skip-the-trip/issues/39) |
-| Cooldown and updates | After a vote, feedback and cooldown are announced without excessive repeated announcements. | Pending |
-| Loading, empty and API error | Loading is announced; empty is distinct from available; error and retry are operable. | Pending |
-| Privacy and support | Privacy, privacy email and support email can be found and activated. | Pending |
-| Increased text and zoom | At platform larger-text setting and browser zoom, all critical controls remain visible and reachable with no obscured content. | Pending |
-| Orientation, contrast and motion | Portrait and one orientation change work; status has text cues; reduced-motion setting removes distracting motion. | Pending |
+| Area | Method and observed result |
+| --- | --- |
+| Semantic names and state | Live accessibility tree exposes named building/floor/category groups, selected option states, explicitly named Yes/No controls and the location dialog. Disabled buildings include Available soon. Native buttons use pressed-state semantics. This is browser-tree inspection, not a screen-reader observation. |
+| Keyboard and focus | Live Tab order starts at the home link then HH5. The home link has a visible 3 px solid outline. On opening the location dialog, focus enters Confirm location; Shift+Tab wraps to Cancel, Tab returns, and Escape returns focus to the initiating contribution control. Automated consent/location containment and reduced-motion cases pass. |
+| Reflow and targets | Live 320/375 CSS px review and local 320 px regression show no horizontal document overflow during lookup. The live 320 px Yes/No targets measured 95 × 49 CSS px. The automated regression checks enabled button dimensions and explicit unknown-state copy. |
+| Contrast | Ratios calculated from published opaque foreground/background colors: ink/surface **13.89:1**, muted/surface **5.44:1**, ink/positive **4.89:1**, ink/negative **4.85:1**, white/accent **4.75:1**. This checks these pairs, not every composited, disabled or image color. |
+| Non-color meaning | Yes/No text, numeric counts and No recent information distinguish the states without relying on green/red. Selection has pressed-state semantics and an inset visual treatment. |
+| Loading/error/retry | Named loading states exist. UI tests cover HTTP 503 and Try again, location rejection visible above the modal, fallback after unavailable high accuracy, and actionable location failure text. |
+| Comprehension | Lookup works without location permission. The dialog explains coordinate disposal and four-hour verification. Unknown status says No recent information and Be the first to report; it does not claim availability. Cooldown/freshness and contribution isolation pass synthetic UI cases. These are copy/behavior checks, not observed participant comprehension. |
+| Privacy/support | Live privacy/support links and consent controls were checked in #28 and #1 on the same release. Email delivery was not retested. |
 
-## Participant task script
+The earlier high-severity keyboard-focus defect [#39](https://github.com/danilomoreiraai/skip-the-trip/issues/39) was fixed by PR #41 and retested on the release above. No new P0/P1 blocker was observed in this bounded review.
 
-Give the task without naming the controls to press. Record whether the participant completed it independently, needed a prompt, could not complete it, or was ineligible. Ask the comprehension question *after* the action to avoid leading the participant.
+## Authorization and recovery (#30)
 
-1. **Status lookup:** “Find the latest information for the bathroom you would use in HH5.” Ask: “If there is no recent information, what does that mean?”
-2. **First vote (eligible participants only):** “If you are at HH5 and know whether this bathroom is available, share that information.” Ask: “Why did the site request location? What does Yes or No mean?”
-3. **Freshness and cooldown:** “When was the information last updated? Can you vote again now?”
-4. **Privacy and help:** “Find where to ask for general help and where to ask a privacy question.”
+| Scenario | Evidence and boundary |
+| --- | --- |
+| Public lookup / missing authorization | Live API-backed lookup succeeds without a location prompt. An unauthorised contribution attempt returns HTTP 403 and opens the confirmation dialog. No successful vote or location confirmation was submitted during this review. |
+| Permission denied | Synthetic browser code 1 shows the location-access explanation, leaves confirmation/cancel usable and preserves lookup after cancellation. No coordinate-verification request is sent. |
+| Position unavailable / timeout | Synthetic codes 2/3 exhaust the high/low-accuracy attempts, show Try again guidance and allow cancellation back to lookup without a verification request or successful vote. A separate case verifies that one unavailable high-accuracy attempt can fall back successfully. |
+| Inside / inclusive boundary / outside | The 12 passing domain tests cover inside, inclusive boundary, outside, insufficient accuracy, invalid input, fixed four-hour lifetime and exact expiry. These are mathematical/synthetic server cases. |
+| Cookie and authorization recovery | Route tests cover authorized/unauthorized contributions. The added cookie regression checks that a retained authorization is inaccessible without the cookie and accessible with the original cookie. PostgreSQL CI tests check reuse without extending expiry, replacement after expiry and deletion. This is not cross-browser cookie-policy evidence. |
+| Reload, retry and freshness | UI mocks cover reload/persistence, per-bathroom cooldown, isolation, expiry and retry. Same-release live checks in #28 cover same-tab reload and simulated connection loss/recovery. Real OS/network transitions remain unverified. |
+| Deployment configuration | #48 records the verified production HH5 configuration, 500 m radius and 100 m accuracy ceiling, with synthetic accepted/rejected API evidence. The current release changes analytics only after that configuration review. No location override or authorization lifetime changed in this work. |
+| Privacy | No production coordinates were requested or published here. Application authorization rows store identity, location ID and verification/expiry times; coordinate rejection/minimization and privacy-safe telemetry remain covered by existing CI tests. No telemetry was added. |
 
-| Session code | Lookup: independent / prompted / blocked | Vote: eligible? and independent / prompted / blocked | Unknown-state interpretation | Location and Yes/No comprehension | Cooldown and freshness comprehension | Privacy / support found | Observations and issue links |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+## Explicitly unverified
 
-**Completion calculation:** count only observed, valid attempts. Lookup rate = independent lookup completions / all lookup attempts. Vote rate = independent first votes / eligible first-vote attempts. Record numerator and denominator, not only a percentage. The #29 thresholds are at least 90% and 80% respectively; no rate can be reported until sessions occur.
+- Physical iOS/Android, Safari/WebKit, VoiceOver/TalkBack, platform larger-text settings, actual browser 200%/400% zoom, orientation on physical devices, private browsing and home-screen/standalone mode.
+- Browser zoom shortcuts in the in-app browser did not change measured viewport/scale; no zoom pass is inferred from that attempt. A 320 px reflow result does not establish actual zoom or platform text scaling.
+- Real GPS accuracy, OS permission/settings recovery, real network transitions, browser termination/reopen behavior and participant task outcomes.
+- Complete WCAG conformance, every contrast combination, and real screen-reader announcement frequency.
 
-| Metric | Independent completions | Valid attempts | Rate | Meets threshold? |
-| --- | --- | --- | --- | --- |
-| Status lookup | Pending | Pending | Pending | Pending |
-| First vote by eligible participants | Pending | Pending | Pending | Pending |
+A short standalone Privacy link has a previously observed height near 24 CSS px; comfortable physical activation and spacing exceptions are not certified by button-size tests. Record a separate issue if a concrete barrier is demonstrated.
 
-## Finding and retest register
+## Release gate and follow-up
 
-Rate an observed finding **Critical** if it blocks a critical journey with no workaround, **High** if it substantially prevents independent completion or assistive-technology use, **Medium** if it causes recoverable difficulty, and **Low** if it is minor friction. Create a separate issue for each actionable code change, link it to #29, and record the release revision used for retest.
+Any observed P0/P1, privacy exposure, data loss/duplication or other stop condition pauses sharing under [#35](https://github.com/danilomoreiraai/skip-the-trip/issues/35). File actionable defects separately with severity, owner, affected revision and retest result. Do not infer success from silence.
 
-| Finding | Severity | Evidence and affected path | Separate issue | Retest revision / device / result |
-| --- | --- | --- | --- | --- |
-| Consent modal leaves keyboard focus on background controls in a 375 × 812 Chromium run against `main` `d57bc38`. First Tab reaches the header link; second reaches HH5 while the dialog remains open. Location modal uses the same pattern but awaits direct retest. | High | Local browser reproduction, 14 October 2026; no physical-device or screen-reader claim. | [#39](https://github.com/danilomoreiraai/skip-the-trip/issues/39) | Pending |
-
-## Automated baseline (14 October 2026)
-
-- `npm run test:e2e -- --reporter=line`: 20/20 passed in desktop and mobile Chromium projects against local `main` `d57bc38` with this protocol's added 320 px regression test. This covers automated keyboard and reduced-motion checks, but not physical devices or screen readers.
-- At 320 CSS px, the complete lookup showed no horizontal document overflow (`scrollWidth = innerWidth = 320`). Enabled buttons measured at least 24 CSS px in each dimension. The isolated Privacy link measured 23.5 CSS px tall and must be checked for comfortable activation on physical devices. This is a local Chromium observation, not an increased platform-text-size result.
-- The real-device and participant tables remain unfilled. The acceptance checkboxes in #29 should remain open until observations, defects, and retests are recorded.
+The owner confirmed on 19 October that the link has **not been shared**. Actual distribution and the post-distribution review in [#33](https://github.com/danilomoreiraai/skip-the-trip/issues/33) remain pending. The planned first review is 27 October 2026. [#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22) retains independent privacy/legal-review requirements; this technical review does not complete them.
