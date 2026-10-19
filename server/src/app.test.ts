@@ -177,6 +177,35 @@ describe("location-authorized reports", () => {
     await app.close();
   });
 
+  it("requires the anonymous cookie to recover an existing authorization", async () => {
+    const app = await testApp();
+    const cookie = await authorize(app);
+    const authenticated = await app.inject({
+      method: "GET",
+      url: "/locations/HH5/eligibility",
+      headers: { cookie },
+    });
+    expect(authenticated.json()).toMatchObject({ authorized: true });
+
+    const missingCookie = await app.inject({
+      method: "GET",
+      url: "/locations/HH5/eligibility",
+    });
+    expect(missingCookie.json()).toEqual({
+      authorized: false,
+      expiresAt: null,
+    });
+    expect(missingCookie.headers["set-cookie"]).toBeUndefined();
+
+    const restoredCookie = await app.inject({
+      method: "GET",
+      url: "/locations/HH5/eligibility",
+      headers: { cookie },
+    });
+    expect(restoredCookie.json()).toMatchObject({ authorized: true });
+    await app.close();
+  });
+
   it("rejects low-accuracy and outside-area readings without issuing identity", async () => {
     const app = await testApp();
     const inaccurate = await app.inject({
