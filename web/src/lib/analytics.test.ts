@@ -44,6 +44,43 @@ describe("analytics consent", () => {
     );
   });
 
+  it("queues initialization and page views in the Google tag arguments format", () => {
+    initializeGoogleAnalytics("accepted", "G-TEST123", vi.fn());
+    trackPageView("accepted", "G-TEST123", "/");
+
+    const commands = window.dataLayer ?? [];
+    expect(commands).toHaveLength(3);
+    for (const command of commands) {
+      expect(Object.prototype.toString.call(command)).toBe(
+        "[object Arguments]",
+      );
+    }
+    expect(
+      commands.map((command) => Array.from(command as IArguments)),
+    ).toEqual([
+      ["js", expect.any(Date)],
+      [
+        "config",
+        "G-TEST123",
+        {
+          anonymize_ip: true,
+          allow_google_signals: false,
+          allow_ad_personalization_signals: false,
+          send_page_view: false,
+        },
+      ],
+      [
+        "event",
+        "page_view",
+        {
+          page_location: "https://skipthetrip.info/",
+          page_path: "/",
+          page_title: "Skip The Trip",
+        },
+      ],
+    ]);
+  });
+
   it("does not emit future page views after consent is withdrawn", () => {
     const gtag = vi.fn();
     window.gtag = gtag;

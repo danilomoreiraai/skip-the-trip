@@ -42,7 +42,11 @@ export function initializeGoogleAnalytics(
   if (consent !== "accepted" || !measurementId) return;
   appendScript(`https://www.googletagmanager.com/gtag/js?id=${measurementId}`);
   window.dataLayer ??= [];
-  window.gtag ??= (...args: unknown[]) => window.dataLayer?.push(args);
+  window.gtag ??= function () {
+    // Google tag commands require an Arguments object, not a rest-parameter array.
+    // biome-ignore lint/complexity/noArguments: Required by the Google tag dataLayer protocol.
+    window.dataLayer?.push(arguments);
+  };
   window.gtag("js", new Date());
   window.gtag("config", measurementId, {
     anonymize_ip: true,
