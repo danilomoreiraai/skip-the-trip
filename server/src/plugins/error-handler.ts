@@ -21,7 +21,7 @@ export function registerErrorHandler(
     }
     if (isResponseSerializationError(error)) {
       request.log.error({ err: error }, "Response serialization failed");
-      captureException?.(error, {
+      captureException?.(new Error("Request failed"), {
         requestId: request.id,
         route: request.routeOptions.url ?? "unknown",
       });
@@ -39,18 +39,13 @@ export function registerErrorHandler(
     const statusCode = candidateStatus < 500 ? candidateStatus : 500;
     if (statusCode === 500) {
       request.log.error({ err: error }, "Unhandled request error");
-      captureException?.(error, {
+      captureException?.(new Error("Request failed"), {
         requestId: request.id,
         route: request.routeOptions.url ?? "unknown",
       });
     }
     return reply.status(statusCode).send({
-      message:
-        statusCode === 500
-          ? "Internal server error"
-          : error instanceof Error
-            ? error.message
-            : "Request failed",
+      message: statusCode === 500 ? "Internal server error" : "Request failed",
       statusCode,
     });
   });
