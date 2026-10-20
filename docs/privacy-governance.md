@@ -28,6 +28,12 @@ evidence are tracked in GitHub issue #25.
 Pseudonymous identifiers can still be personal data. No data in this inventory is
 described as anonymous unless re-identification is no longer reasonably possible.
 
+## Cleaner operations (default disabled)
+
+Individual staff access uses an operator-provided alias and a one-use invitation that expires after 24 hours. Only SHA-256 hashes of invitations and session credentials are stored. Sessions expire after eight hours and can be revoked individually by the operator; public responses display only team attribution, never the staff alias or identity. Staff access is scoped to HH5.
+
+Cleaning cycles and idempotent command audit contain bathroom identity, staff ID, action and timestamps, and follow the configured 30-day retention. Expired invitations/sessions are removed on the scheduled retention run. Revoked staff identities are removed after the retention period. Active staff identities remain restricted operational records until revoked. No staff geolocation is collected. The operator must distribute invitations privately and keep credentials out of logs, screenshots and support messages.
+
 ## Coordinate exclusion controls
 
 - The location route validates coordinates, makes the proximity decision in

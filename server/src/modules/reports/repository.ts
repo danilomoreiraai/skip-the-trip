@@ -1,6 +1,7 @@
 import { and, count, desc, eq, gt, lt, sql } from "drizzle-orm";
 import type { Database } from "../../db/index.js";
-import { activeVotes, reports } from "../../db/schema.js";
+import { activeVotes, cleaningCycles, reports } from "../../db/schema.js";
+import { CleaningInProgressError } from "../../domain/cleaning.js";
 import type {
   AuthorizedReportInput,
   Bathroom,
@@ -33,17 +34,25 @@ export class IdempotencyConflictError extends Error {
 
 export function createReportsRepository(db: Database): ReportsRepository {
   return {
-    async createWithCooldown(
-      input,
-      cooldownSeconds,
-      windowMinutes,
-      now = new Date(),
-    ) {
+    async createWithCooldown(input, cooldownSeconds, windowMinutes, at?: Date) {
       return db.transaction(async (tx) => {
+        const bathroomLock = `bathroom:${input.building}:${input.floor}:${input.category}`;
+        await tx.execute(
+          sql`select pg_advisory_xact_lock(hashtext(${bathroomLock}))`,
+        );
         const lockKey = `${input.anonymousId}:${input.building}:${input.floor}:${input.category}`;
         await tx.execute(
           sql`select pg_advisory_xact_lock(hashtext(${lockKey}))`,
         );
+        const now =
+          at ??
+          new Date(
+            (
+              await tx.execute<{ now: string }>(
+                sql`select clock_timestamp() as now`,
+              )
+            ).rows[0]!.now,
+          );
         const existing = await tx.query.reports.findFirst({
           where: eq(reports.idempotencyKey, input.idempotencyKey),
         });
@@ -57,6 +66,16 @@ export function createReportsRepository(db: Database): ReportsRepository {
           if (!matches) throw new IdempotencyConflictError();
           return { created: false, retryAfterSeconds: 0 };
         }
+        const cleaning = await tx.query.cleaningCycles.findFirst({
+          where: and(
+            eq(cleaningCycles.building, input.building),
+            eq(cleaningCycles.floor, input.floor),
+            eq(cleaningCycles.category, input.category),
+          ),
+          orderBy: [desc(cleaningCycles.sequence)],
+        });
+        if (cleaning && !cleaning.endedAt && cleaning.expectedEndAt > now)
+          throw new CleaningInProgressError(cleaning.expectedEndAt);
         const latest = await tx.query.activeVotes.findFirst({
           where: and(
             eq(activeVotes.anonymousId, input.anonymousId),
@@ -94,6 +113,7 @@ export function createReportsRepository(db: Database): ReportsRepository {
         where: and(
           eq(activeVotes.building, building),
           gt(activeVotes.expiresAt, now),
+          sql`${activeVotes.updatedAt} > coalesce((select max(started_at) from cleaning_cycles where building = ${activeVotes.building} and floor = ${activeVotes.floor} and category = ${activeVotes.category}), '-infinity'::timestamptz)`,
         ),
         orderBy: [desc(activeVotes.updatedAt)],
       });
@@ -122,6 +142,7 @@ export function createReportsRepository(db: Database): ReportsRepository {
         eq(activeVotes.floor, bathroom.floor),
         eq(activeVotes.category, bathroom.category),
         gt(activeVotes.expiresAt, now),
+        sql`${activeVotes.updatedAt} > coalesce((select max(started_at) from cleaning_cycles where building = ${activeVotes.building} and floor = ${activeVotes.floor} and category = ${activeVotes.category}), '-infinity'::timestamptz)`,
       );
       const [latest, totals] = await Promise.all([
         db.query.activeVotes.findFirst({

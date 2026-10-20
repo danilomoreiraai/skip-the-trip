@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleaningStateSchema } from "../domain/cleaning.js";
 import {
   createReportBodySchema,
   getReportQuerySchema,
@@ -8,6 +9,7 @@ export { createReportBodySchema, getReportQuerySchema };
 
 export const reportSummarySchema = getReportQuerySchema.extend({
   available: z.boolean().nullable(),
+  cleaning: cleaningStateSchema.nullable().optional(),
   reportedAt: z.date().nullable(),
   yesCount: z.number().int().nonnegative(),
   noCount: z.number().int().nonnegative(),

@@ -103,3 +103,11 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 @media (max-width: 700px) { .overview-grid { grid-template-columns: 1fr; } .overview-state { min-height: auto; } .view-switch a { margin-left: 0; } }
 
 .site-shell:has(.overview-layout) { width: min(100%, 1120px); }
+.cleaning-notice { border:2px solid var(--accent); border-radius:var(--radius-control); padding:.8rem; margin:.75rem 0; background:var(--surface-2); }
+.cleaning-notice.active { border-left-width:8px; }
+.cleaning-notice p { font-size:.8rem; line-height:1.5; margin:.5rem 0 0; }
+.staff-layout button, .staff-layout input, .staff-layout select { min-height:44px; border:2px solid var(--line); border-radius:var(--radius-control); padding:.6rem; max-width:100%; background:var(--surface-2); color:var(--ink); }
+.staff-layout form, .staff-selection, .staff-actions { display:flex; flex-direction:column; gap:.75rem; margin:1rem 0; }
+.staff-selection label { display:flex; flex-direction:column; gap:.4rem; }
+.staff-layout input:focus-visible, .staff-layout select:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
+.staff-layout button:disabled { opacity:.5; }

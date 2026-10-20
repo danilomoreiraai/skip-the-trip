@@ -287,3 +287,50 @@ describe("selection persistence", () => {
     expect(() => saveSelection({ building: "HH1" })).not.toThrow();
   });
 });
+
+describe("authoritative cleaning", () => {
+  it("keeps a team-only status when no community vote is present", async () => {
+    const cleaning = {
+      ...location,
+      building: "HH5",
+      id: "550e8400-e29b-41d4-a716-446655440099",
+      state: "active",
+      startedAt: "2026-10-20T10:00:00.000Z",
+      expectedEndAt: "2026-10-20T10:15:00.000Z",
+      endedAt: null,
+      updatedAt: "2026-10-20T10:00:00.000Z",
+      version: 1,
+    };
+    vi.stubGlobal("fetch", async () =>
+      response({
+        ...location,
+        available: null,
+        reportedAt: null,
+        expiresAt: null,
+        yesCount: 0,
+        noCount: 0,
+        cleaning,
+      }),
+    );
+    expect(await getReport(location)).toMatchObject({
+      available: null,
+      yesCount: 0,
+      cleaning,
+    });
+  });
+  it("distinguishes cleaning rejection from cooldown and location errors", async () => {
+    vi.stubGlobal("fetch", async () =>
+      response(
+        {
+          code: "CLEANING_IN_PROGRESS",
+          message: "Paused",
+          expectedEndAt: "2026-10-20T10:15:00.000Z",
+        },
+        409,
+      ),
+    );
+    await expect(submitReport(location, true)).rejects.toMatchObject({
+      expectedEndAt: "2026-10-20T10:15:00.000Z",
+    });
+  });
+});

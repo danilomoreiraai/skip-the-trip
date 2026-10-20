@@ -40,7 +40,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await pool.query(
-    "truncate table reports, active_votes, location_authorizations restart identity",
+    "truncate table staff_members, staff_invites, staff_sessions, cleaning_cycles, cleaning_commands, reports, active_votes, location_authorizations restart identity cascade",
   );
 });
 afterAll(async () => {

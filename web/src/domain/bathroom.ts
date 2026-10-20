@@ -11,8 +11,20 @@ export type Bathroom = z.infer<typeof bathroomSchema>;
 export function isBuildingAvailable(building: (typeof buildings)[number]) {
   return building === "HH5";
 }
+export const cleaningStateSchema = bathroomSchema.extend({
+  id: z.string().uuid(),
+  state: z.enum(["active", "expired", "ended"]),
+  startedAt: z.string().datetime(),
+  expectedEndAt: z.string().datetime(),
+  endedAt: z.string().datetime().nullable(),
+  updatedAt: z.string().datetime(),
+  version: z.number().int().positive(),
+});
+export type CleaningState = z.infer<typeof cleaningStateSchema>;
+
 const reportSchema = z.object({
-  available: z.boolean(),
+  available: z.boolean().nullable(),
+  cleaning: cleaningStateSchema.nullable().optional(),
   reportedAt: z.number().finite().nonnegative(),
   expiresAt: z.number().finite().nonnegative(),
   yesCount: z.number().int().nonnegative().optional(),

@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { type Bathroom, bathroomSchema, type Report } from "../domain/bathroom";
+import {
+  type Bathroom,
+  bathroomSchema,
+  cleaningStateSchema,
+  type Report,
+} from "../domain/bathroom";
 import { env } from "../env";
 import { injectTraceContext, observability } from "../lib/observability";
 
@@ -8,6 +13,7 @@ const apiUrl = env.VITE_API_URL.replace(/\/$/, "");
 
 export const apiReportSchema = bathroomSchema.extend({
   available: z.boolean().nullable(),
+  cleaning: cleaningStateSchema.nullable().optional(),
   reportedAt: z.string().datetime().nullable(),
   yesCount: z.number().int().nonnegative(),
   noCount: z.number().int().nonnegative(),
@@ -17,6 +23,7 @@ const apiErrorSchema = z.object({
   code: z.string().optional(),
   message: z.string(),
   retryAfterSeconds: z.number().int().positive().optional(),
+  expectedEndAt: z.string().datetime().optional(),
 });
 
 async function fetchWithNetworkRetry(input: string, init: RequestInit) {
@@ -46,6 +53,8 @@ async function parseResponse(response: Response) {
   const payload: unknown = await response.json();
   if (!response.ok) {
     const error = apiErrorSchema.safeParse(payload);
+    if (error.success && error.data.code === "CLEANING_IN_PROGRESS")
+      throw new CleaningInProgressError(error.data.expectedEndAt ?? null);
     if (error.success && error.data.retryAfterSeconds) {
       throw new VoteCooldownError(
         error.data.message,
@@ -77,6 +86,16 @@ export class VoteCooldownError extends Error {
   }
 }
 
+export class CleaningInProgressError extends Error {
+  readonly expectedEndAt: string | null;
+  constructor(expectedEndAt: string | null) {
+    super(
+      "Cleaning reported by the team. Contributions are temporarily paused.",
+    );
+    this.expectedEndAt = expectedEndAt;
+  }
+}
+
 export class LocationVerificationRequiredError extends Error {}
 export class LocationVerificationError extends Error {
   readonly code: string;
@@ -88,11 +107,16 @@ export class LocationVerificationError extends Error {
 }
 
 function toReport(report: z.infer<typeof apiReportSchema>): Report | null {
-  if (report.available === null || report.reportedAt === null) return null;
+  if (
+    (report.available === null || report.reportedAt === null) &&
+    !report.cleaning
+  )
+    return null;
   return {
     available: report.available,
-    reportedAt: Date.parse(report.reportedAt),
-    expiresAt: Date.parse(report.expiresAt ?? report.reportedAt),
+    reportedAt: report.reportedAt ? Date.parse(report.reportedAt) : 0,
+    expiresAt: report.expiresAt ? Date.parse(report.expiresAt) : 0,
+    ...(report.cleaning ? { cleaning: report.cleaning } : {}),
     yesCount: report.yesCount,
     noCount: report.noCount,
   };

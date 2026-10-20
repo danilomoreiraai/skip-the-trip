@@ -2,6 +2,7 @@ import { buildApp } from "./app.js";
 import { db, pool } from "./db/index.js";
 import { env } from "./env.js";
 import { createLocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
+import { createOperationsRepository } from "./modules/operations/repository.js";
 import { createReportsRepository } from "./modules/reports/repository.js";
 import {
   initializeTracing,
@@ -51,6 +52,7 @@ if (env.SENTRY_DSN) {
 
 const app = await buildApp({
   config: env,
+  operationsRepository: createOperationsRepository(db),
   reportsRepository: instrumentReportsRepository(createReportsRepository(db)),
   locationAuthorizationsRepository: instrumentLocationAuthorizationsRepository(
     createLocationAuthorizationsRepository(db),

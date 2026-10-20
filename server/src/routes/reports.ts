@@ -3,6 +3,7 @@ import { createReport, VoteCooldownError } from "../functions/create-report.js";
 import { getReport } from "../functions/get-report.js";
 import { readAnonymousId } from "../lib/anonymous-identity.js";
 import type { LocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import type { OperationsRepository } from "../modules/operations/repository.js";
 import type { ReportsRepository } from "../modules/reports/repository.js";
 import {
   createReportBodySchema,
@@ -20,6 +21,7 @@ export function registerReportRoutes(
   windowMinutes: number,
   cooldownSeconds: number,
   secureCookie: boolean,
+  operations?: OperationsRepository,
 ) {
   app.get(
     "/reports",
@@ -31,7 +33,16 @@ export function registerReportRoutes(
     },
     async (request) => {
       const query = getReportQuerySchema.parse(request.query);
-      return getReport(repository, query);
+      const report = await getReport(repository, query);
+      const cleaning = operations
+        ? ((await operations.buildingStates()).find(
+            (state) =>
+              state.building === query.building &&
+              state.floor === query.floor &&
+              state.category === query.category,
+          ) ?? null)
+        : null;
+      return { ...report, cleaning };
     },
   );
 

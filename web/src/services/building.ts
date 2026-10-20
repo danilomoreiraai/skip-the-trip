@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cleaningStateSchema } from "../domain/bathroom";
 import { env } from "../env";
 import { apiReportSchema } from "./reports";
 
@@ -6,6 +7,7 @@ const buildingStatusSchema = z.object({
   building: z.literal("HH5"),
   generatedAt: z.string().datetime(),
   bathrooms: z.array(apiReportSchema),
+  cleaning: z.array(cleaningStateSchema).default([]),
 });
 export type BuildingStatus = z.infer<typeof buildingStatusSchema>;
 export async function getBuildingStatus(): Promise<BuildingStatus> {
