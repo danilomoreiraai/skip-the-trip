@@ -1,10 +1,29 @@
 import { Writable } from "node:stream";
 import Fastify from "fastify";
+import { serializerCompiler } from "fastify-type-provider-zod";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { registerErrorHandler } from "../plugins/error-handler.js";
 import { privacyLogger } from "./privacy-logging.js";
 
 describe("private request diagnostics", () => {
+  it("sanitizes response serialization failures before sending them to error tracking", async () => {
+    const errors: unknown[] = [];
+    const app = Fastify({ logger: false });
+    app.setSerializerCompiler(serializerCompiler);
+    registerErrorHandler(app, (error) => errors.push(error));
+    app.get(
+      "/broken",
+      { schema: { response: { 200: z.object({ result: z.string() }) } } },
+      async () => ({ result: { secret: "secret-coordinate" } }),
+    );
+    const response = await app.inject({ method: "GET", url: "/broken" });
+    expect(response.statusCode).toBe(500);
+    expect(response.body).not.toContain("secret-coordinate");
+    expect(errors).toHaveLength(1);
+    expect(String(errors[0])).not.toContain("secret-coordinate");
+    await app.close();
+  });
   it("excludes query strings, headers, body and exception payloads from request logs and error tracking", async () => {
     const logs: string[] = [];
     const errors: unknown[] = [];
