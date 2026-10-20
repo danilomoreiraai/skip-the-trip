@@ -27,6 +27,11 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set the EasyPanel PostgreSQL internal URL}
       CORS_ORIGIN: https://${APP_DOMAIN:?Set APP_DOMAIN}
       STAFF_ENABLED: ${STAFF_ENABLED:-false}
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@skipthetrip.info}
+      PUSH_ENCRYPTION_KEY: ${PUSH_ENCRYPTION_KEY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REPORT_WINDOW_MINUTES: ${REPORT_WINDOW_MINUTES:-30}
       REPORT_RETENTION_DAYS: ${REPORT_RETENTION_DAYS:-30}
@@ -53,6 +58,32 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+
+
+  push-worker:
+    profiles: [notifications]
+    build:
+      context: ./server
+      args:
+        APP_REVISION: ${APP_REVISION:?Set APP_REVISION to the full approved Git SHA}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Set the EasyPanel PostgreSQL internal URL}
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@skipthetrip.info}
+      PUSH_ENCRYPTION_KEY: ${PUSH_ENCRYPTION_KEY:-}
+    command: [npm, run, push:worker:prod]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - default
+      - easypanel
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

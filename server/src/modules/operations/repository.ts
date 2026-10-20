@@ -3,6 +3,8 @@ import type { Database } from "../../db/index.js";
 import {
   cleaningCommands,
   cleaningCycles,
+  cleaningEvents,
+  pushSubscriptions,
   staffInvites,
   staffMembers,
   staffSessions,
@@ -253,6 +255,10 @@ export function createOperationsRepository(db: Database) {
             .where(eq(cleaningCycles.id, latest.id))
             .returning();
         }
+        if (input.action === "start")
+          await tx
+            .insert(cleaningEvents)
+            .values({ cycleId: changed!.id, createdAt: now });
         const result = view(changed!, now);
         await tx.insert(cleaningCommands).values({
           commandId: input.commandId,
@@ -267,6 +273,9 @@ export function createOperationsRepository(db: Database) {
     },
     async prune(before: Date, now = new Date()) {
       await db.transaction(async (tx) => {
+        await tx
+          .delete(pushSubscriptions)
+          .where(lte(pushSubscriptions.expiresAt, now));
         await tx
           .delete(staffInvites)
           .where(

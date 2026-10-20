@@ -11,6 +11,7 @@ import type { Env } from "./env.js";
 import { privacyLogger } from "./lib/privacy-logging.js";
 import type { LocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import type { OperationsRepository } from "./modules/operations/repository.js";
+import type { PushRepository } from "./modules/push/repository.js";
 import type { ReportsRepository } from "./modules/reports/repository.js";
 import { registerTracing } from "./observability/tracing.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
@@ -19,6 +20,7 @@ import {
   registerBuildingStatusRoutes,
   registerLocationRoutes,
 } from "./routes/locations.js";
+import { type PushConfig, registerPushRoutes } from "./routes/push.js";
 import { registerReportRoutes } from "./routes/reports.js";
 import { registerStaffRoutes } from "./routes/staff.js";
 
@@ -38,6 +40,8 @@ type AppOptions = {
   > &
     Partial<Pick<Env, "STAFF_ENABLED">>;
   operationsRepository?: OperationsRepository;
+  pushRepository?: PushRepository;
+  pushConfig?: PushConfig;
   reportsRepository: ReportsRepository;
   locationAuthorizationsRepository: LocationAuthorizationsRepository;
   captureException?: (
@@ -52,6 +56,8 @@ export async function buildApp({
   locationAuthorizationsRepository,
   captureException,
   operationsRepository,
+  pushRepository,
+  pushConfig,
 }: AppOptions) {
   const app = Fastify({
     logger: privacyLogger(config.LOG_LEVEL),
@@ -97,6 +103,14 @@ export async function buildApp({
     },
     secureCookie,
   );
+  if (pushRepository)
+    registerPushRoutes(
+      app,
+      pushRepository,
+      pushConfig ?? { enabled: false, publicKey: null },
+      config.CORS_ORIGIN.split(",").map((value) => value.trim()),
+      secureCookie,
+    );
   registerBuildingStatusRoutes(app, reportsRepository, operationsRepository);
   if (config.STAFF_ENABLED && operationsRepository)
     registerStaffRoutes(

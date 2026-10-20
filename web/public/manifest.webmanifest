@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "Skip The Trip",
+  "short_name": "Skip The Trip",
+  "description": "Check bathroom availability and team cleaning updates at HH5.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#e9e5da",
+  "theme_color": "#f7f3e9",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

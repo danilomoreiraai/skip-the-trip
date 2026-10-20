@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { CleaningNotice } from "../components/CleaningNotice";
 import { FavoriteButton } from "../components/Favorite";
 import { type Bathroom, floors } from "../domain/bathroom";
@@ -13,6 +14,7 @@ export function Overview({
   onFavoriteChange: (value: Bathroom | null) => void;
   onContribute: (bathroom: Bathroom) => void;
 }) {
+  const [search] = useSearchParams();
   const query = useQuery({
     queryKey: ["building", "HH5"],
     queryFn: getBuildingStatus,
@@ -64,7 +66,7 @@ export function Overview({
                 .filter((b) => b.floor === floor)
                 .map((bathroom) => (
                   <article
-                    className={`overview-bathroom ${bathroom.available === null ? "unknown" : bathroom.available ? "available" : "unavailable"}`}
+                    className={`overview-bathroom ${search.get("floor") === bathroom.floor && search.get("category") === bathroom.category ? "notification-target" : ""} ${bathroom.available === null ? "unknown" : bathroom.available ? "available" : "unavailable"}`}
                     key={bathroom.category}
                   >
                     <h3>{bathroom.category}</h3>

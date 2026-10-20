@@ -119,6 +119,17 @@ export function Privacy({
         guarantee the physical condition or availability of a bathroom. A saved
         favorite stays in this browser and can be removed in the app.
       </p>
+      <h2>Optional cleaning notifications</h2>
+      <p>
+        Notifications require a separate choice and browser permission,
+        independently from analytics. We store your selected favorite and
+        protected subscription details to deliver new cleaning-team updates
+        through your browser provider. You can turn notifications off in the
+        app; removing your favorite also requests cancellation. Inactive
+        subscriptions expire after 30 days. On iPhone/iPad, add the app to the
+        Home Screen before enabling notifications. Delivery can be delayed or
+        unavailable.
+      </p>
       <h2>Your choices and rights</h2>
       <p>
         Depending on the circumstances, you may request access, correction,

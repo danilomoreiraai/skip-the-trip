@@ -18,6 +18,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { FavoriteButton, FavoriteSummary } from "./components/Favorite";
+import { PushSettings } from "./components/PushSettings";
 import { StatusPanel } from "./components/StatusPanel";
 import { AppSkeleton, Button, Selector, Spinner, Toast } from "./components/ui";
 import {
@@ -606,6 +607,7 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
           if (favorite) contribute(favorite);
         }}
       />
+      <PushSettings favorite={favorite} />
       {view === "overview" ? (
         <Overview
           favorite={favorite}
@@ -636,9 +638,9 @@ export function App() {
     trackPageView(
       analyticsConsent,
       env.VITE_GOOGLE_ANALYTICS_ID,
-      `${location.pathname}${location.search}`,
+      location.pathname,
     );
-  }, [analyticsConsent, location.pathname, location.search]);
+  }, [analyticsConsent, location.pathname]);
   return (
     <div className="experience" data-theme="signal-core">
       <div className="ambient ambient-one" aria-hidden="true" />

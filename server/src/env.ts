@@ -5,6 +5,17 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "test", "production"])
     .default("development"),
+  PUSH_ENABLED: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z
+    .string()
+    .regex(/^(mailto:|https:\/\/)/)
+    .default("mailto:support@skipthetrip.info"),
+  PUSH_ENCRYPTION_KEY: z.string().optional(),
   STAFF_ENABLED: z
     .enum(["true", "false"])
     .default("false")
@@ -60,4 +71,19 @@ const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
-export const env = envSchema.parse(process.env);
+export const env = envSchema
+  .superRefine((value, context) => {
+    if (
+      value.PUSH_ENABLED &&
+      (!value.VAPID_PUBLIC_KEY ||
+        !value.VAPID_PRIVATE_KEY ||
+        !value.PUSH_ENCRYPTION_KEY ||
+        Buffer.from(value.PUSH_ENCRYPTION_KEY, "base64").length !== 32)
+    )
+      context.addIssue({
+        code: "custom",
+        message:
+          "Enabled push requires VAPID keys and a 32-byte PUSH_ENCRYPTION_KEY",
+      });
+  })
+  .parse(process.env);

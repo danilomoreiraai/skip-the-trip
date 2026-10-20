@@ -42,6 +42,11 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/skip_the_trip
       CORS_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:8080}
       STAFF_ENABLED: ${STAFF_ENABLED:-false}
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@skipthetrip.info}
+      PUSH_ENCRYPTION_KEY: ${PUSH_ENCRYPTION_KEY:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       REPORT_WINDOW_MINUTES: ${REPORT_WINDOW_MINUTES:-30}
       REPORT_RETENTION_DAYS: ${REPORT_RETENTION_DAYS:-30}
@@ -207,6 +212,29 @@ services:
       timeout: 5s
       retries: 12
     restart: unless-stopped
+
+
+  push-worker:
+    profiles: [notifications]
+    build:
+      context: ./server
+      args:
+        APP_REVISION: ${APP_REVISION:-local}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/skip_the_trip
+      PUSH_ENABLED: ${PUSH_ENABLED:-false}
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:support@skipthetrip.info}
+      PUSH_ENCRYPTION_KEY: ${PUSH_ENCRYPTION_KEY:-}
+    command: [npm, run, push:worker:prod]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
 
   web:
     build:

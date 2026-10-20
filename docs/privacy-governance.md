@@ -34,6 +34,14 @@ Individual staff access uses an operator-provided alias and a one-use invitation
 
 Cleaning cycles and idempotent command audit contain bathroom identity, staff ID, action and timestamps, and follow the configured 30-day retention. Expired invitations/sessions are removed on the scheduled retention run. Revoked staff identities are removed after the retention period. Active staff identities remain restricted operational records until revoked. No staff geolocation is collected. The operator must distribute invitations privately and keep credentials out of logs, screenshots and support messages.
 
+## Optional favorite cleaning notifications (default disabled)
+
+An explicit browser favorite stays in local storage. Enabling notifications separately requests browser permission and creates a dedicated HttpOnly/SameSite=Strict push-owner cookie, independent of vote identity and analytics. The API stores its hash, favorite bathroom, encrypted subscription endpoint/keys, timestamps and expiry. Endpoints and keys are encrypted with AES-256-GCM using a deployment key kept outside the database. The application sends encrypted Web Push through the supported browser providers (Google, Mozilla and Apple).
+
+Subscriptions expire after 30 days without renewal and are removed by retention or after provider 404/410 responses. Turning notifications off deletes the server subscription immediately and asks the browser to unsubscribe. Removing/changing the favorite updates notification preferences while the app is open. Clearing browser storage alone cannot prove immediate deletion of previously received server records; expiration and invalid-subscription cleanup still apply. Browser/system permissions remain independently manageable.
+
+Only new team cleaning cycles enqueue notification events; extensions and community votes do not. Events and delivery bookkeeping contain cycle/subscription IDs and bounded state/timestamps and follow the existing 30-day cycle retention. Push payloads include bathroom identity and cycle times, never cleaner identity or coordinates. Staff and push activation each require a separate configuration decision; no production subscriptions or keys were created by implementation.
+
 ## Coordinate exclusion controls
 
 - The location route validates coordinates, makes the proximity decision in
