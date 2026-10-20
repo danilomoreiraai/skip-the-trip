@@ -14,6 +14,14 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 describe("explicit browser preferences", () => {
+  it("defaults a small touch screen to contribution and keeps a large touch screen in consultation", () => {
+    vi.stubGlobal("window", { matchMedia: () => ({ matches: true }) });
+    expect(loadView()).toBe("contribute");
+    vi.stubGlobal("window", {
+      matchMedia: (query: string) => ({ matches: query.includes("pointer") }),
+    });
+    expect(loadView()).toBe("overview");
+  });
   it("keeps the favorite independent from incidental selection, replaces and removes it", () => {
     saveFavorite({ building: "HH5", floor: "1", category: "Female" });
     saveSelection({ building: "HH5", floor: "2", category: "Male" });
