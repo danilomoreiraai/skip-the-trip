@@ -114,6 +114,7 @@ describe("server tracing", () => {
         retryAfterSeconds: 0,
       }),
       findSummary: vi.fn().mockResolvedValue({}),
+      findBuildingSummaries: vi.fn().mockResolvedValue([]),
       deleteExpired: vi.fn().mockResolvedValue({ activeVotes: 0, reports: 0 }),
       ping: vi.fn().mockResolvedValue(undefined),
     } as unknown as ReportsRepository;
@@ -137,6 +138,7 @@ describe("server tracing", () => {
       300,
       30,
     );
+    await tracedReports.findBuildingSummaries("HH5", new Date());
     await tracedReports.findSummary(
       { building: sensitive } as never,
       new Date(),
@@ -154,6 +156,7 @@ describe("server tracing", () => {
 
     expect(exporter.getFinishedSpans().map(({ name }) => name)).toEqual([
       "postgresql.reports.create",
+      "postgresql.reports.building_read",
       "postgresql.reports.read",
       "postgresql.reports.delete_expired",
       "postgresql.healthcheck",
