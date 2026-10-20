@@ -59,7 +59,7 @@ configured. `/privacy` describes the site and lets visitors change their
 analytics preference; unknown routes display a 404.
 
 See [`docs/privacy-governance.md`](docs/privacy-governance.md) for the processing
-inventory, retention statements, contact workflow and legal-review status.
+inventory, retention statements, contact workflow and temporary-experiment scope.
 
 `web/src/domain` owns freshness and location rules, `web/src/services` owns API
 access, and `web/src/components` contains reusable controls. Reports refresh
@@ -85,10 +85,16 @@ Alertmanager delivery and incident runbooks
 browser-to-database tracing
 ([#23](https://github.com/danilomoreiraai/skip-the-trip/issues/23)).
 
-The remaining tracked work includes production Analytics collection evidence
-([#1](https://github.com/danilomoreiraai/skip-the-trip/issues/1)) and privacy
-ownership/legal review
-([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)).
+Consent-gated production Analytics collection is verified in
+[#1](https://github.com/danilomoreiraai/skip-the-trip/issues/1). Remaining work
+includes technical privacy/provider evidence
+([#22](https://github.com/danilomoreiraai/skip-the-trip/issues/22)) and beta
+operational/feedback review (#35/#33). The owner has scoped this to a temporary
+experiment for a selected group agreeing to participate. Independent legal
+review and wider-launch preparation are outside this workstream. The public URL
+remains forwardable; selected-group distribution is not technical access control.
+The owner intends to deactivate the app later; the date and data/backup disposition
+remain to be planned. No deactivation or deletion is scheduled.
 See [release verification](docs/easypanel.md#5-verification) before sharing the beta link.
 Use the [closed-beta operations playbook](docs/closed-beta-operations.md) for
 voluntary group participation, functional checks, optional feedback, stop decisions,
