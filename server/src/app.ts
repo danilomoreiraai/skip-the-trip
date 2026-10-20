@@ -14,7 +14,10 @@ import type { ReportsRepository } from "./modules/reports/repository.js";
 import { registerTracing } from "./observability/tracing.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerMetrics } from "./plugins/metrics.js";
-import { registerLocationRoutes } from "./routes/locations.js";
+import {
+  registerBuildingStatusRoutes,
+  registerLocationRoutes,
+} from "./routes/locations.js";
 import { registerReportRoutes } from "./routes/reports.js";
 
 type AppOptions = {
@@ -89,6 +92,7 @@ export async function buildApp({
     },
     secureCookie,
   );
+  registerBuildingStatusRoutes(app, reportsRepository);
   registerReportRoutes(
     app,
     reportsRepository,

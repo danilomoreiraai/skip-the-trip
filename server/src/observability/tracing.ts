@@ -153,6 +153,12 @@ export function instrumentReportsRepository(
         () => repository.createWithCooldown(...args),
         tracer,
       ),
+    findBuildingSummaries: (...args) =>
+      traceDatabaseOperation(
+        "reports.building_read",
+        () => repository.findBuildingSummaries(...args),
+        tracer,
+      ),
     findSummary: (...args) =>
       traceDatabaseOperation(
         "reports.read",

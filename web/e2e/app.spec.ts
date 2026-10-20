@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
+    localStorage.setItem("skip-the-trip:view:v1", "contribute");
     if (!sessionStorage.getItem("privacy-choice-test")) {
       localStorage.setItem("skip-the-trip:analytics-consent:v1", "accepted");
     }
@@ -467,6 +468,18 @@ test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("link", { name: "Skip the Trip home" }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Consult", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("button", { name: "Contribute", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("link", { name: "HH5 building page", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(

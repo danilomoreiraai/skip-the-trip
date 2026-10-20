@@ -48,6 +48,33 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL reports repository", () => {
+  it("consolidates current bathroom votes into the twelve supported HH5 entries", async () => {
+    const now = new Date("2026-10-20T10:00:00.000Z");
+    await repository.createWithCooldown(vote(), 300, 30, now);
+    await repository.createWithCooldown(
+      vote({ floor: "2", category: "Female", available: false }),
+      300,
+      30,
+      now,
+    );
+    await repository.createWithCooldown(
+      vote({ floor: "1" }),
+      300,
+      30,
+      new Date("2026-10-20T09:00:00.000Z"),
+    );
+    const summary = await repository.findBuildingSummaries("HH5", now);
+    expect(summary).toHaveLength(12);
+    expect(
+      summary.find((b) => b.floor === "G" && b.category === "Male"),
+    ).toMatchObject({ yesCount: 1, noCount: 0 });
+    expect(
+      summary.find((b) => b.floor === "2" && b.category === "Female"),
+    ).toMatchObject({ yesCount: 0, noCount: 1 });
+    expect(
+      summary.find((b) => b.floor === "1" && b.category === "Male"),
+    ).toMatchObject({ available: null, yesCount: 0 });
+  });
   it("counts three independent active identities for the same bathroom", async () => {
     const now = new Date("2026-10-08T10:00:00.000Z");
     await repository.createWithCooldown(vote(), 300, 30, now);

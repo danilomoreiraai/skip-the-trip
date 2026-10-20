@@ -16,6 +16,15 @@ function createFakeReportsRepository(): ReportsRepository {
   >();
   const operations = new Map<string, AuthorizedReportInput>();
   return {
+    async findBuildingSummaries(building, now) {
+      const result: ReportSummary[] = [];
+      for (const floor of ["G", "1", "2", "3"] as const)
+        for (const category of ["Male", "Accessible", "Female"] as const)
+          result.push(
+            await this.findSummary({ building, floor, category }, now),
+          );
+      return result;
+    },
     async createWithCooldown(
       input,
       cooldownSeconds,
@@ -126,6 +135,28 @@ async function authorize(app: Awaited<ReturnType<typeof testApp>>) {
 }
 
 describe("location-authorized reports", () => {
+  it("returns a public consolidated HH5 overview and rejects unavailable buildings", async () => {
+    const app = await testApp();
+    const result = await app.inject({
+      method: "GET",
+      url: "/locations/HH5/status",
+    });
+    expect(result.statusCode).toBe(200);
+    expect(result.headers["cache-control"]).toBe("no-store");
+    expect(result.json().bathrooms).toHaveLength(12);
+    expect(result.json().bathrooms[0]).toMatchObject({
+      building: "HH5",
+      floor: "G",
+      category: "Male",
+      available: null,
+      yesCount: 0,
+    });
+    expect(
+      (await app.inject({ method: "GET", url: "/locations/HH1/status" }))
+        .statusCode,
+    ).toBe(400);
+    await app.close();
+  });
   it("keeps viewing public and blocks a vote without authorization", async () => {
     const app = await testApp();
     expect(
