@@ -20,6 +20,12 @@ describe("private request diagnostics", () => {
     app.post("/vote", async () => {
       throw new CleaningInProgressError(new Date("2026-10-20T10:15:00.000Z"));
     });
+    app.post("/unauthorized", async () => {
+      throw new OperationsError("STAFF_UNAUTHORIZED", 401);
+    });
+    expect(
+      (await app.inject({ method: "POST", url: "/unauthorized" })).statusCode,
+    ).toBe(401);
     const conflict = await app.inject({ method: "POST", url: "/cleaning" });
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json()).toMatchObject({ code: "CLEANING_CONFLICT" });
