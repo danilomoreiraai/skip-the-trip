@@ -7,6 +7,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  text,
   timestamp,
   uniqueIndex,
   uuid,
@@ -154,4 +155,56 @@ export const cleaningCommands = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   },
   (table) => [index("cleaning_commands_created_idx").on(table.createdAt)],
+);
+
+export const pushSubscriptions = pgTable(
+  "push_subscriptions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ownerHash: varchar("owner_hash", { length: 64 }).notNull().unique(),
+    endpointHash: varchar("endpoint_hash", { length: 64 }).notNull().unique(),
+    encrypted: text("encrypted").notNull(),
+    building: varchar("building", { length: 3 }).notNull(),
+    floor: varchar("floor", { length: 1 }).notNull(),
+    category: bathroomCategory("category").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    changedAt: timestamp("changed_at", { withTimezone: true }).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("push_subscriptions_bathroom_idx").on(
+      table.building,
+      table.floor,
+      table.category,
+    ),
+    index("push_subscriptions_expires_idx").on(table.expiresAt),
+  ],
+);
+export const cleaningEvents = pgTable("cleaning_events", {
+  cycleId: uuid("cycle_id")
+    .primaryKey()
+    .references(() => cleaningCycles.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+});
+export const pushDeliveries = pgTable(
+  "push_deliveries",
+  {
+    cycleId: uuid("cycle_id")
+      .notNull()
+      .references(() => cleaningEvents.cycleId, { onDelete: "cascade" }),
+    subscriptionId: uuid("subscription_id")
+      .notNull()
+      .references(() => pushSubscriptions.id, { onDelete: "cascade" }),
+    attempts: integer("attempts").notNull().default(0),
+    nextAttemptAt: timestamp("next_attempt_at", {
+      withTimezone: true,
+    }).notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    discardedAt: timestamp("discarded_at", { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.cycleId, table.subscriptionId] }),
+    index("push_deliveries_due_idx").on(table.nextAttemptAt),
+  ],
 );

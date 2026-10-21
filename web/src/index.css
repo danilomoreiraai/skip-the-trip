@@ -111,3 +111,9 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 .staff-selection label { display:flex; flex-direction:column; gap:.4rem; }
 .staff-layout input:focus-visible, .staff-layout select:focus-visible { outline:3px solid var(--focus); outline-offset:3px; }
 .staff-layout button:disabled { opacity:.5; }
+.push-settings { border:2px solid var(--line); background:var(--surface-2); border-radius:var(--radius-control); padding:1rem; margin:1rem 0; }
+.push-settings h2 { font-size:1rem; margin:0 0 .5rem; }
+.push-settings p { font-size:.85rem; line-height:1.5; margin:.6rem 0; }
+.push-settings button { min-height:44px; padding:.6rem; border:2px solid var(--line); border-radius:var(--radius-control); background:var(--accent); color:#fff; }
+.push-settings button:disabled { opacity:.5; }
+.overview-bathroom.notification-target { outline:3px solid var(--accent); outline-offset:3px; }

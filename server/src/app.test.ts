@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "./app.js";
 import type { LocationAuthorizationWindow } from "./domain/locations.js";
 import type {
@@ -7,6 +7,7 @@ import type {
   ReportSummary,
 } from "./domain/reports.js";
 import type { LocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
+import type { PushRepository } from "./modules/push/repository.js";
 import type { ReportsRepository } from "./modules/reports/repository.js";
 
 function createFakeReportsRepository(): ReportsRepository {
@@ -356,4 +357,35 @@ describe("location-authorized reports", () => {
     expect(metrics.body).not.toContain("51.9");
     await app.close();
   });
+});
+
+it("wires push configuration and revocable preferences while notifications default off", async () => {
+  const pushRepository = {
+    preference: vi.fn().mockResolvedValue(null),
+    remove: vi.fn(),
+  } as unknown as PushRepository;
+  const app = await buildApp({
+    config,
+    reportsRepository: createFakeReportsRepository(),
+    locationAuthorizationsRepository: createFakeAuthorizationsRepository(),
+    pushRepository,
+  });
+  expect(
+    (await app.inject({ method: "GET", url: "/push/config" })).json(),
+  ).toEqual({ enabled: false, publicKey: null });
+  const headers = {
+    origin: config.CORS_ORIGIN,
+    "x-push-client": "1",
+    cookie: "skip-the-trip-push=" + "a".repeat(64),
+  };
+  expect(
+    (await app.inject({ method: "DELETE", url: "/push/subscription", headers }))
+      .statusCode,
+  ).toBe(204);
+  expect(pushRepository.remove).toHaveBeenCalledOnce();
+  expect(
+    (await app.inject({ method: "PUT", url: "/push/subscription", headers }))
+      .statusCode,
+  ).toBe(404);
+  await app.close();
 });

@@ -3,6 +3,7 @@ import { db, pool } from "./db/index.js";
 import { env } from "./env.js";
 import { createLocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import { createOperationsRepository } from "./modules/operations/repository.js";
+import { createPushRepository } from "./modules/push/repository.js";
 import { createReportsRepository } from "./modules/reports/repository.js";
 import {
   initializeTracing,
@@ -53,6 +54,11 @@ if (env.SENTRY_DSN) {
 const app = await buildApp({
   config: env,
   operationsRepository: createOperationsRepository(db),
+  pushRepository: createPushRepository(db, env.PUSH_ENCRYPTION_KEY),
+  pushConfig: {
+    enabled: env.PUSH_ENABLED,
+    publicKey: env.PUSH_ENABLED ? env.VAPID_PUBLIC_KEY! : null,
+  },
   reportsRepository: instrumentReportsRepository(createReportsRepository(db)),
   locationAuthorizationsRepository: instrumentLocationAuthorizationsRepository(
     createLocationAuthorizationsRepository(db),
