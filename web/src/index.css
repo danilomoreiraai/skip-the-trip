@@ -103,3 +103,22 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 @media (max-width: 700px) { .overview-grid { grid-template-columns: 1fr; } .overview-state { min-height: auto; } .view-switch a { margin-left: 0; } }
 
 .site-shell:has(.overview-layout) { width: min(100%, 1120px); }
+
+/* Explicit device choice stays within the existing app shell. */
+.device-choice { padding: 8px 0 4px; }
+.device-choice .product-intro { margin-bottom: 24px; }
+.device-choice .product-intro h1 { font-size: clamp(26px, 7vw, 34px); line-height: 1.05; margin-bottom: 8px; }
+.device-choice h1:focus, .device-session h2:focus { outline: none; }
+.device-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.device-option { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 20px 16px; min-width: 0; text-align: left; border: 2px solid var(--line); border-radius: var(--radius-control); background: var(--surface-2); color: var(--ink); }
+.device-option:hover { background: var(--surface); }
+.device-option > svg { color: var(--accent); }
+.device-title { font-size: 18px; font-weight: 900; letter-spacing: -.04em; }
+.device-description { font-size: 12px; line-height: 1.6; color: var(--muted); }
+.device-action { margin-top: auto; padding-top: 4px; font-size: 11px; font-weight: 900; color: var(--accent); }
+.device-session { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 2px solid var(--line); }
+.device-session h2 { margin: 0; font-size: 13px; font-weight: 900; }
+.device-session p { margin: 6px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.device-session button { min-height: 44px; padding: 10px 12px; border: 2px solid var(--line); border-radius: var(--radius-control); background: var(--surface-2); color: var(--ink); font-size: 12px; font-weight: 800; }
+.overview-bathroom:focus { outline: 3px solid var(--focus); outline-offset: 4px; }
+@media (max-width: 380px) { .device-options { grid-template-columns: 1fr; } .device-option { gap: 10px; } }

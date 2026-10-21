@@ -48,10 +48,14 @@ import {
   type VoteCooldowns,
   withVoteCooldown,
 } from "./lib/vote-cooldown";
+import { DeviceChoice } from "./pages/DeviceChoice";
 import { Overview } from "./pages/Overview";
 import {
+  type Device,
+  loadDevice,
   loadFavorite,
   loadView,
+  saveDevice,
   saveFavorite,
   saveView,
   type View,
@@ -175,6 +179,13 @@ function Home({
     idempotencyKey: string;
   } | null>(null);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
+  const locationFlowActive = useRef(true);
+  useEffect(() => {
+    locationFlowActive.current = true;
+    return () => {
+      locationFlowActive.current = false;
+    };
+  }, []);
   const locationJustVerified = useRef(false);
   const voteTrigger = useRef<HTMLButtonElement | null>(null);
   const client = useQueryClient();
@@ -242,7 +253,7 @@ function Home({
     },
   });
   const requestLocationAndVote = async () => {
-    if (!pendingVote) return;
+    if (!pendingVote || !locationFlowActive.current) return;
     setVerifyingLocation(true);
     try {
       const getPosition = (options: PositionOptions) =>
@@ -257,6 +268,7 @@ function Home({
           timeout: 10_000,
         });
       } catch (error) {
+        if (!locationFlowActive.current) return;
         if (
           typeof error !== "object" ||
           error === null ||
@@ -271,10 +283,13 @@ function Home({
           timeout: 20_000,
         });
       }
+      if (!locationFlowActive.current) return;
       await verifyLocation("HH5", position.coords);
+      if (!locationFlowActive.current) return;
       locationJustVerified.current = true;
       mutation.mutate(pendingVote);
     } catch (error) {
+      if (!locationFlowActive.current) return;
       locationJustVerified.current = false;
       let failure: GeolocationFailureCategory = "unexpected";
       if (
@@ -308,7 +323,7 @@ function Home({
       }
       void reportGeolocationFailure(failure);
     } finally {
-      setVerifyingLocation(false);
+      if (locationFlowActive.current) setVerifyingLocation(false);
     }
   };
   const vote = (location: Bathroom, available: boolean) =>
@@ -533,16 +548,44 @@ function Home({
   );
 }
 function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
+  const [device, setDevice] = useState(loadDevice);
+  const changeDevice = (value: Device | null) => {
+    saveDevice(value);
+    setDevice(value);
+  };
+  return device ? (
+    <PublicExperience
+      device={device}
+      buildingRoute={buildingRoute}
+      onChangeDevice={() => changeDevice(null)}
+    />
+  ) : (
+    <DeviceChoice onChoose={changeDevice} />
+  );
+}
+function PublicExperience({
+  device,
+  buildingRoute,
+  onChangeDevice,
+}: {
+  device: Device;
+  buildingRoute: boolean;
+  onChangeDevice: () => void;
+}) {
+  const canContribute = device === "mobile";
   const [selectionVersion, setSelectionVersion] = useState(0);
   const [search, setSearch] = useSearchParams();
-  const [view, setView] = useState<View>(() =>
+  const [selectedView, setView] = useState<View>(() =>
     search.get("view") === "contribute"
       ? "contribute"
       : search.get("view") === "overview" || buildingRoute
         ? "overview"
         : loadView(),
   );
+  const view = canContribute ? selectedView : "overview";
   const [favorite, setFavorite] = useState(loadFavorite);
+  const experienceHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => experienceHeading.current?.focus(), []);
   useEffect(() => {
     const refresh = () =>
       setFavorite((previous) => {
@@ -566,6 +609,7 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
     setFavorite(normalized);
   };
   const changeView = (value: View) => {
+    if (value === "contribute" && !canContribute) return;
     saveView(value);
     setView(value);
     setSearch(
@@ -577,12 +621,26 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
     );
   };
   const contribute = (bathroom: Bathroom) => {
+    if (!canContribute) return;
     saveSelection(bathroom);
     setSelectionVersion((value) => value + 1);
     changeView("contribute");
   };
   return (
     <>
+      <section className="device-session" aria-label="Selected device">
+        <div>
+          <h2 ref={experienceHeading} tabIndex={-1}>
+            {canContribute ? "Mobile device" : "Mac · Consultation only"}
+          </h2>
+          {!canContribute && (
+            <p>To vote, open Skip the Trip on your mobile device.</p>
+          )}
+        </div>
+        <button type="button" onClick={onChangeDevice}>
+          Change device
+        </button>
+      </section>
       <nav className="view-switch" aria-label="View mode">
         <button
           type="button"
@@ -591,13 +649,15 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
         >
           Consult
         </button>
-        <button
-          type="button"
-          aria-pressed={view === "contribute"}
-          onClick={() => changeView("contribute")}
-        >
-          Contribute
-        </button>
+        {canContribute && (
+          <button
+            type="button"
+            aria-pressed={view === "contribute"}
+            onClick={() => changeView("contribute")}
+          >
+            Contribute
+          </button>
+        )}
         <Link
           to="/HH5"
           onClick={() => {
@@ -611,14 +671,22 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
         favorite={favorite}
         onChange={changeFavorite}
         onOpen={() => {
-          if (favorite) contribute(favorite);
+          if (!favorite) return;
+          if (canContribute) contribute(favorite);
+          else {
+            const card = document.getElementById(
+              `bathroom-${bathroomKey(favorite)}`,
+            );
+            card?.focus({ preventScroll: true });
+            card?.scrollIntoView({ block: "center" });
+          }
         }}
       />
       {view === "overview" ? (
         <Overview
           favorite={favorite}
           onFavoriteChange={changeFavorite}
-          onContribute={contribute}
+          onContribute={canContribute ? contribute : undefined}
         />
       ) : (
         <Home
