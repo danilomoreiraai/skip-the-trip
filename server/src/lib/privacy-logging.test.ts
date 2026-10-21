@@ -7,6 +7,32 @@ import { registerErrorHandler } from "../plugins/error-handler.js";
 import { privacyLogger } from "./privacy-logging.js";
 
 describe("private request diagnostics", () => {
+  it("keeps sensitive unknown paths and query strings out of not-found logs and responses", async () => {
+    const logs: string[] = [];
+    const app = Fastify({
+      logger: {
+        ...privacyLogger("info"),
+        stream: new Writable({
+          write(chunk, _encoding, callback) {
+            logs.push(String(chunk));
+            callback();
+          },
+        }),
+      },
+    });
+    registerErrorHandler(app);
+    for (const url of [
+      "/unknown?latitude=secret-coordinate",
+      "/secret-invite-code?longitude=secret-coordinate",
+    ]) {
+      const response = await app.inject({ method: "GET", url });
+      expect(response.statusCode).toBe(404);
+      expect(response.body).not.toContain("secret-");
+    }
+    await app.close();
+    expect(logs.join("")).not.toContain("secret-coordinate");
+    expect(logs.join("")).not.toContain("secret-invite-code");
+  });
   it("sanitizes response serialization failures before sending them to error tracking", async () => {
     const errors: unknown[] = [];
     const app = Fastify({ logger: false });

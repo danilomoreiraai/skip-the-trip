@@ -13,6 +13,9 @@ export function registerErrorHandler(
   app: FastifyInstance,
   captureException?: CaptureException,
 ) {
+  app.setNotFoundHandler((_request, reply) =>
+    reply.status(404).send({ message: "Not found", statusCode: 404 }),
+  );
   app.setErrorHandler((error, request, reply) => {
     if (hasZodFastifySchemaValidationErrors(error)) {
       return reply
