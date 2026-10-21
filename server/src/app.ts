@@ -8,6 +8,7 @@ import {
   validatorCompiler,
 } from "fastify-type-provider-zod";
 import type { Env } from "./env.js";
+import { privacyLogger } from "./lib/privacy-logging.js";
 import type { LocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import type { ReportsRepository } from "./modules/reports/repository.js";
 import { registerTracing } from "./observability/tracing.js";
@@ -45,7 +46,7 @@ export async function buildApp({
   captureException,
 }: AppOptions) {
   const app = Fastify({
-    logger: { level: config.LOG_LEVEL },
+    logger: privacyLogger(config.LOG_LEVEL),
     requestIdHeader: "x-request-id",
   });
   app.setValidatorCompiler(validatorCompiler);
