@@ -488,6 +488,10 @@ test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
   ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
+    page.getByRole("button", { name: "Choose favorite", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
     page.getByRole("button", { name: "HH5", exact: true }),
   ).toBeFocused();
   await expect(

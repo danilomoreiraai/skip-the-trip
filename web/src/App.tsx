@@ -549,43 +549,7 @@ function Home({
 }
 function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
   const [device, setDevice] = useState(loadDevice);
-  const changeDevice = (value: Device | null) => {
-    saveDevice(value);
-    setDevice(value);
-  };
-  return device ? (
-    <PublicExperience
-      device={device}
-      buildingRoute={buildingRoute}
-      onChangeDevice={() => changeDevice(null)}
-    />
-  ) : (
-    <DeviceChoice onChoose={changeDevice} />
-  );
-}
-function PublicExperience({
-  device,
-  buildingRoute,
-  onChangeDevice,
-}: {
-  device: Device;
-  buildingRoute: boolean;
-  onChangeDevice: () => void;
-}) {
-  const canContribute = device === "mobile";
-  const [selectionVersion, setSelectionVersion] = useState(0);
-  const [search, setSearch] = useSearchParams();
-  const [selectedView, setView] = useState<View>(() =>
-    search.get("view") === "contribute"
-      ? "contribute"
-      : search.get("view") === "overview" || buildingRoute
-        ? "overview"
-        : loadView(),
-  );
-  const view = canContribute ? selectedView : "overview";
   const [favorite, setFavorite] = useState(loadFavorite);
-  const experienceHeading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => experienceHeading.current?.focus(), []);
   useEffect(() => {
     const refresh = () =>
       setFavorite((previous) => {
@@ -608,6 +572,52 @@ function PublicExperience({
     saveFavorite(normalized);
     setFavorite(normalized);
   };
+  const changeDevice = (value: Device | null) => {
+    saveDevice(value);
+    setDevice(value);
+  };
+  return device ? (
+    <PublicExperience
+      device={device}
+      favorite={favorite}
+      changeFavorite={changeFavorite}
+      buildingRoute={buildingRoute}
+      onChangeDevice={() => changeDevice(null)}
+    />
+  ) : (
+    <DeviceChoice
+      onChoose={changeDevice}
+      favorite={favorite}
+      onFavoriteChange={changeFavorite}
+    />
+  );
+}
+function PublicExperience({
+  favorite,
+  changeFavorite,
+  device,
+  buildingRoute,
+  onChangeDevice,
+}: {
+  favorite: Bathroom | null;
+  changeFavorite: (value: Bathroom | null) => void;
+  device: Device;
+  buildingRoute: boolean;
+  onChangeDevice: () => void;
+}) {
+  const canContribute = device === "mobile";
+  const [selectionVersion, setSelectionVersion] = useState(0);
+  const [search, setSearch] = useSearchParams();
+  const [selectedView, setView] = useState<View>(() =>
+    search.get("view") === "contribute"
+      ? "contribute"
+      : search.get("view") === "overview" || buildingRoute
+        ? "overview"
+        : loadView(),
+  );
+  const view = canContribute ? selectedView : "overview";
+  const experienceHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => experienceHeading.current?.focus(), []);
   const changeView = (value: View) => {
     if (value === "contribute" && !canContribute) return;
     saveView(value);
@@ -670,6 +680,7 @@ function PublicExperience({
       <FavoriteSummary
         favorite={favorite}
         onChange={changeFavorite}
+        onChooseFavorite={() => changeView("overview")}
         onOpen={() => {
           if (!favorite) return;
           if (canContribute) contribute(favorite);

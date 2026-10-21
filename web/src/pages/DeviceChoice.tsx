@@ -1,11 +1,17 @@
 import { Laptop, Smartphone } from "lucide-react";
 import { useEffect, useRef } from "react";
+import { FavoriteSummary } from "../components/Favorite";
+import type { Bathroom } from "../domain/bathroom";
 import type { Device } from "../services/preferences";
 
 export function DeviceChoice({
   onChoose,
+  favorite,
+  onFavoriteChange,
 }: {
   onChoose: (device: Device) => void;
+  favorite: Bathroom | null;
+  onFavoriteChange: (value: Bathroom | null) => void;
 }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => heading.current?.focus(), []);
@@ -18,6 +24,7 @@ export function DeviceChoice({
         </h1>
         <p>Choose your device to get started.</p>
       </div>
+      <FavoriteSummary favorite={favorite} onChange={onFavoriteChange} />
       <div className="device-options">
         <button
           type="button"

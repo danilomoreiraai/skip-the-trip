@@ -122,3 +122,8 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 .device-session button { min-height: 44px; padding: 10px 12px; border: 2px solid var(--line); border-radius: var(--radius-control); background: var(--surface-2); color: var(--ink); font-size: 12px; font-weight: 800; }
 .overview-bathroom:focus { outline: 3px solid var(--focus); outline-offset: 4px; }
 @media (max-width: 380px) { .device-options { grid-template-columns: 1fr; } .device-option { gap: 10px; } }
+
+.favorite-live-status { flex-basis: 100%; padding: .85rem; border: 2px solid var(--line); border-radius: var(--radius-control); }
+.favorite-live-status strong { margin-left: 0; }
+.favorite-live-status.available { border-color: var(--positive); }
+.favorite-live-status.unavailable { border-color: var(--negative); }
