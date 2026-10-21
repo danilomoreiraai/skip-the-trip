@@ -77,3 +77,29 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 @media(min-width:900px){.experience{display:grid;place-items:start center;padding-top:42px}.site-shell{margin:0}}
 @media(max-width:620px){.experience{padding:14px 10px 28px}.site-shell{padding:24px 18px;box-shadow:5px 5px 0 var(--ink)}.category-options .option{min-height:105px}.product-intro h1{font-size:29px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.15s!important}.ambient-one{transform:none!important}}
+
+/* Building consultation reuses the Signal Core palette and controls. */
+.view-switch { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 auto 1rem; max-width: 68rem; }
+.view-switch button, .overview-layout button, .favorite-button, .favorite-summary button { min-height: 44px; padding: .6rem .85rem; border: 2px solid var(--line); border-radius: var(--radius-control); background: var(--surface-2); color: var(--ink); display: inline-flex; align-items: center; justify-content: center; gap: .4rem; cursor: pointer; }
+.view-switch button[aria-pressed=true], .favorite-button[aria-pressed=true] { background: var(--ink); color: #fff; }
+.view-switch a { margin-left: auto; color: var(--ink); padding: .6rem; }
+.overview-layout { max-width: 68rem; margin: 0 auto; width: 100%; }
+.overview-intro { margin: 1.5rem 0; }
+.overview-intro h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+.overview-intro p { margin: .75rem 0; }
+.overview-floor { margin-top: 1.6rem; }
+.overview-floor h2 { font-size: 1.2rem; margin-bottom: .75rem; }
+.overview-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.overview-bathroom { border: 2px solid var(--line); border-radius: var(--radius-shell); padding: 1.1rem; background: var(--surface-2); min-width: 0; }
+.overview-bathroom h3 { margin: 0 0 .75rem; }
+.overview-bathroom.available { border-top: 4px solid var(--positive); }
+.overview-bathroom.unavailable { border-top: 4px solid var(--negative); }
+.overview-state { min-height: 3rem; font-weight: 600; }
+.overview-actions, .favorite-actions { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+.overview-warning { padding: 1rem; border: 2px solid var(--negative); border-radius: .8rem; background: var(--surface-2); }
+.favorite-summary { max-width: 68rem; margin: 1rem auto; border: 2px solid var(--line); padding: 1rem; border-radius: 1rem; background: var(--surface-2); display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.favorite-summary strong { margin-left: .4rem; }
+.favorite-summary p { margin-top: .5rem; }
+@media (max-width: 700px) { .overview-grid { grid-template-columns: 1fr; } .overview-state { min-height: auto; } .view-switch a { margin-left: 0; } }
+
+.site-shell:has(.overview-layout) { width: min(100%, 1120px); }

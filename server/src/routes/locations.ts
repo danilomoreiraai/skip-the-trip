@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import {
   authorizationWindow,
   authorizeLocation,
@@ -9,12 +10,14 @@ import {
   readAnonymousId,
 } from "../lib/anonymous-identity.js";
 import type { LocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import type { ReportsRepository } from "../modules/reports/repository.js";
 import {
   eligibilitySchema,
   locationErrorSchema,
   locationParamsSchema,
   verifyLocationBodySchema,
 } from "../schemas/locations.js";
+import { reportSummarySchema } from "../schemas/reports.js";
 
 export function registerLocationRoutes(
   app: FastifyInstance,
@@ -84,6 +87,37 @@ export function registerLocationRoutes(
         now,
       );
       return { authorized: true, expiresAt: saved.expiresAt };
+    },
+  );
+}
+
+export function registerBuildingStatusRoutes(
+  app: FastifyInstance,
+  repository: ReportsRepository,
+) {
+  app.get(
+    "/locations/:id/status",
+    {
+      schema: {
+        params: locationParamsSchema,
+        response: {
+          200: z.object({
+            building: z.literal("HH5"),
+            generatedAt: z.date(),
+            bathrooms: z.array(reportSummarySchema),
+          }),
+        },
+      },
+    },
+    async (request, reply) => {
+      const { id } = locationParamsSchema.parse(request.params);
+      const now = new Date();
+      reply.header("cache-control", "no-store");
+      return {
+        building: id,
+        generatedAt: now,
+        bathrooms: await repository.findBuildingSummaries(id, now),
+      };
     },
   );
 }

@@ -6,6 +6,7 @@ import type {
   Bathroom,
   ReportSummary,
 } from "../../domain/reports.js";
+import { bathroomCategories, floors } from "../../domain/reports.js";
 
 export type ReportsRepository = {
   createWithCooldown(
@@ -14,6 +15,7 @@ export type ReportsRepository = {
     windowMinutes: number,
     now?: Date,
   ): Promise<{ created: boolean; retryAfterSeconds: number }>;
+  findBuildingSummaries(building: "HH5", now: Date): Promise<ReportSummary[]>;
   findSummary(bathroom: Bathroom, now: Date): Promise<ReportSummary>;
   deleteExpired(
     before: Date,
@@ -86,6 +88,33 @@ export function createReportsRepository(db: Database): ReportsRepository {
           });
         return { created: true, retryAfterSeconds: 0 };
       });
+    },
+    async findBuildingSummaries(building, now) {
+      const votes = await db.query.activeVotes.findMany({
+        where: and(
+          eq(activeVotes.building, building),
+          gt(activeVotes.expiresAt, now),
+        ),
+        orderBy: [desc(activeVotes.updatedAt)],
+      });
+      return floors.flatMap((floor) =>
+        bathroomCategories.map((category) => {
+          const matching = votes.filter(
+            (vote) => vote.floor === floor && vote.category === category,
+          );
+          const latest = matching[0];
+          return {
+            building,
+            floor,
+            category,
+            available: latest?.available ?? null,
+            reportedAt: latest?.updatedAt ?? null,
+            expiresAt: latest?.expiresAt ?? null,
+            yesCount: matching.filter((vote) => vote.available).length,
+            noCount: matching.filter((vote) => !vote.available).length,
+          };
+        }),
+      );
     },
     async findSummary(bathroom, now) {
       const location = and(

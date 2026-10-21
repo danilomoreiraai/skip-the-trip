@@ -6,7 +6,7 @@ import { injectTraceContext, observability } from "../lib/observability";
 const SELECTION_KEY = "skip-the-trip:selection";
 const apiUrl = env.VITE_API_URL.replace(/\/$/, "");
 
-const apiReportSchema = bathroomSchema.extend({
+export const apiReportSchema = bathroomSchema.extend({
   available: z.boolean().nullable(),
   reportedAt: z.string().datetime().nullable(),
   yesCount: z.number().int().nonnegative(),

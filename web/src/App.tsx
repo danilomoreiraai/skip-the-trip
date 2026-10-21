@@ -10,7 +10,14 @@ import {
   useRef,
   useState,
 } from "react";
-import { Link, Route, Routes, useLocation } from "react-router-dom";
+import {
+  Link,
+  Route,
+  Routes,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
+import { FavoriteButton, FavoriteSummary } from "./components/Favorite";
 import { StatusPanel } from "./components/StatusPanel";
 import { AppSkeleton, Button, Selector, Spinner, Toast } from "./components/ui";
 import {
@@ -41,6 +48,14 @@ import {
   type VoteCooldowns,
   withVoteCooldown,
 } from "./lib/vote-cooldown";
+import { Overview } from "./pages/Overview";
+import {
+  loadFavorite,
+  loadView,
+  saveFavorite,
+  saveView,
+  type View,
+} from "./services/preferences";
 import {
   getReport,
   LocationVerificationError,
@@ -137,9 +152,20 @@ function CategoryIcon({ category }: { category: Bathroom["category"] }) {
     />
   );
 }
-function Home() {
+function Home({
+  favorite,
+  onFavoriteChange,
+}: {
+  favorite: Bathroom | null;
+  onFavoriteChange: (value: Bathroom | null) => void;
+}) {
   const reduced = useReducedMotion();
-  const [selection, setSelection] = useState<Partial<Bathroom>>(loadSelection);
+  const [selection, setSelection] = useState<Partial<Bathroom>>(() => {
+    const saved = loadSelection();
+    return bathroomSchema.safeParse(saved).success
+      ? saved
+      : (favorite ?? saved);
+  });
   const [now, setNow] = useState(Date.now);
   const [toast, setToast] = useState("");
   const [voteCooldowns, setVoteCooldowns] = useState<VoteCooldowns>({});
@@ -375,6 +401,13 @@ function Home() {
           onChange={(category) => changeSelection({ ...selection, category })}
           renderIcon={(category) => <CategoryIcon category={category} />}
         />
+        {bathroom && (
+          <FavoriteButton
+            bathroom={bathroom}
+            favorite={favorite}
+            onChange={onFavoriteChange}
+          />
+        )}
         <h2 className="availability-label">Available ?</h2>
         <div className="vote-section">
           <div className="vote-buttons">
@@ -499,6 +532,104 @@ function Home() {
     </m.main>
   );
 }
+function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
+  const [selectionVersion, setSelectionVersion] = useState(0);
+  const [search, setSearch] = useSearchParams();
+  const [view, setView] = useState<View>(() =>
+    search.get("view") === "contribute"
+      ? "contribute"
+      : search.get("view") === "overview" || buildingRoute
+        ? "overview"
+        : loadView(),
+  );
+  const [favorite, setFavorite] = useState(loadFavorite);
+  useEffect(() => {
+    const refresh = () =>
+      setFavorite((previous) => {
+        const latest = loadFavorite(previous);
+        return JSON.stringify(previous) === JSON.stringify(latest)
+          ? previous
+          : latest;
+      });
+    window.addEventListener("storage", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+  const changeFavorite = (value: Bathroom | null) => {
+    const normalized = value ? bathroomSchema.parse(value) : null;
+    saveFavorite(normalized);
+    setFavorite(normalized);
+  };
+  const changeView = (value: View) => {
+    saveView(value);
+    setView(value);
+    setSearch(
+      (previous) => {
+        previous.set("view", value);
+        return previous;
+      },
+      { replace: true },
+    );
+  };
+  const contribute = (bathroom: Bathroom) => {
+    saveSelection(bathroom);
+    setSelectionVersion((value) => value + 1);
+    changeView("contribute");
+  };
+  return (
+    <>
+      <nav className="view-switch" aria-label="View mode">
+        <button
+          type="button"
+          aria-pressed={view === "overview"}
+          onClick={() => changeView("overview")}
+        >
+          Consult
+        </button>
+        <button
+          type="button"
+          aria-pressed={view === "contribute"}
+          onClick={() => changeView("contribute")}
+        >
+          Contribute
+        </button>
+        <Link
+          to="/HH5"
+          onClick={() => {
+            if (buildingRoute) changeView("overview");
+          }}
+        >
+          HH5 building page
+        </Link>
+      </nav>
+      <FavoriteSummary
+        favorite={favorite}
+        onChange={changeFavorite}
+        onOpen={() => {
+          if (favorite) contribute(favorite);
+        }}
+      />
+      {view === "overview" ? (
+        <Overview
+          favorite={favorite}
+          onFavoriteChange={changeFavorite}
+          onContribute={contribute}
+        />
+      ) : (
+        <Home
+          key={selectionVersion}
+          favorite={favorite}
+          onFavoriteChange={changeFavorite}
+        />
+      )}
+    </>
+  );
+}
 export function App() {
   const location = useLocation();
   const [analyticsConsent, setConsent] = useState<AnalyticsConsent | null>(
@@ -535,7 +666,8 @@ export function App() {
         <Suspense fallback={<AppSkeleton />}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<PublicHome />} />
+              <Route path="/HH5" element={<PublicHome buildingRoute />} />
               <Route
                 path="/privacy"
                 element={
