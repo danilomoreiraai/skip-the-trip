@@ -46,6 +46,14 @@ npm run test:e2e
 
 ## Behavior
 
+The initial screen asks users to choose **Mobile device** or **Mac**, with icons
+and explanatory text. Mobile device allows consultation and contribution; Mac
+allows consultation only. **Change device** returns to this choice. The choice
+is kept in session storage for the current tab when available; it is a manual
+experience preference, not automatic device detection or proof of hardware.
+Links, saved views and favorites respect the selected experience. Location is
+still required by the server when voting, regardless of the chosen experience.
+
 HH5 is currently available for interaction; HH1–HH4 are visible as `Available soon` while their bathroom layouts are cataloged. For HH5, choose G/1/2/3 and Male/Accessible/Female. Viewing is public; the first contribution requires server-approved proximity to HH5 and grants a fixed four-hour authorization. Each anonymous browser contributes at most one active vote per bathroom. Updating that vote after the five-minute cooldown restarts its 30-minute lifetime. No report means unknown, never assumed available.
 
 Reports are validated with Zod and stored by the API in PostgreSQL. An anonymous

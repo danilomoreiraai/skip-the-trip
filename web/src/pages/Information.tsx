@@ -15,7 +15,7 @@ export function Privacy({
         <ArrowLeft size={16} />
         Back to the app
       </Link>
-      <span className="eyebrow">LAST UPDATED 12 OCTOBER 2026</span>
+      <span className="eyebrow">LAST UPDATED 21 OCTOBER 2026</span>
       <h1>Privacy notice</h1>
       <p>
         Skip The Trip is a personal educational and portfolio project operated
@@ -39,11 +39,14 @@ export function Privacy({
         availability, enforce cooldowns and resist duplicate votes.
       </p>
       <p>
-        The current building, floor and bathroom selection remain in session
-        storage on your device. The analytics preference remains in local
-        storage. The essential voting data is processed on the basis of the
-        controller&apos;s legitimate interests in operating, securing and
-        demonstrating the project with limited, pseudonymous data.
+        The current building, floor and bathroom selection and your manual
+        Mobile device or Mac choice remain in session storage on your device.
+        The device choice only selects the consultation or voting experience; it
+        is not detected automatically or sent to the API. Your favorite,
+        consultation view and analytics preference remain in local storage. The
+        essential voting data is processed on the basis of the controller&apos;s
+        legitimate interests in operating, securing and demonstrating the
+        project with limited, pseudonymous data.
       </p>
       <h2>Location verification</h2>
       <p>

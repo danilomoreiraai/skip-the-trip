@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
 import { FavoriteButton } from "../components/Favorite";
-import { type Bathroom, floors } from "../domain/bathroom";
+import { type Bathroom, bathroomKey, floors } from "../domain/bathroom";
 import { getBuildingStatus } from "../services/building";
 export function Overview({
   favorite,
@@ -10,7 +10,7 @@ export function Overview({
 }: {
   favorite: Bathroom | null;
   onFavoriteChange: (value: Bathroom | null) => void;
-  onContribute: (bathroom: Bathroom) => void;
+  onContribute?: (bathroom: Bathroom) => void;
 }) {
   const query = useQuery({
     queryKey: ["building", "HH5"],
@@ -26,7 +26,11 @@ export function Overview({
       <section className="overview-intro">
         <span className="eyebrow">Live building utility</span>
         <h1>HH5 overview</h1>
-        <p>Check each floor. Location is only needed when you contribute.</p>
+        <p>
+          {onContribute
+            ? "Check each floor. Location is only needed when you contribute."
+            : "Check live status on each floor. No location access needed."}
+        </p>
         <button
           type="button"
           onClick={() => void query.refetch()}
@@ -63,6 +67,8 @@ export function Overview({
                 .filter((b) => b.floor === floor)
                 .map((bathroom) => (
                   <article
+                    id={`bathroom-${bathroomKey(bathroom)}`}
+                    tabIndex={-1}
                     className={`overview-bathroom ${bathroom.available === null ? "unknown" : bathroom.available ? "available" : "unavailable"}`}
                     key={bathroom.category}
                   >
@@ -85,13 +91,15 @@ export function Overview({
                         favorite={favorite}
                         onChange={onFavoriteChange}
                       />
-                      <button
-                        type="button"
-                        aria-label={`Contribute: HH5 floor ${floor} ${bathroom.category}`}
-                        onClick={() => onContribute(bathroom)}
-                      >
-                        Contribute
-                      </button>
+                      {onContribute && (
+                        <button
+                          type="button"
+                          aria-label={`Contribute: HH5 floor ${floor} ${bathroom.category}`}
+                          onClick={() => onContribute(bathroom)}
+                        >
+                          Contribute
+                        </button>
+                      )}
                     </div>
                   </article>
                 ))}

@@ -2,7 +2,25 @@ import { type Bathroom, bathroomSchema } from "../domain/bathroom";
 
 const FAVORITE_KEY = "skip-the-trip:favorite:v1";
 const VIEW_KEY = "skip-the-trip:view:v1";
+const DEVICE_KEY = "skip-the-trip:device:v1";
 export type View = "overview" | "contribute";
+export type Device = "mobile" | "mac";
+export function loadDevice(): Device | null {
+  try {
+    const value = sessionStorage.getItem(DEVICE_KEY);
+    return value === "mobile" || value === "mac" ? value : null;
+  } catch {
+    return null;
+  }
+}
+export function saveDevice(value: Device | null) {
+  try {
+    if (value) sessionStorage.setItem(DEVICE_KEY, value);
+    else sessionStorage.removeItem(DEVICE_KEY);
+  } catch {
+    /* Keep the current in-memory choice. */
+  }
+}
 export function loadFavorite(
   fallback: Bathroom | null = null,
 ): Bathroom | null {
@@ -34,12 +52,9 @@ export function loadView(): View {
     const value = localStorage.getItem(VIEW_KEY);
     if (value === "overview" || value === "contribute") return value;
   } catch {
-    /* Use the capability default. */
+    /* Keep consultation available without storage. */
   }
-  return window.matchMedia("(pointer: coarse)").matches &&
-    window.matchMedia("(max-width: 900px)").matches
-    ? "contribute"
-    : "overview";
+  return "overview";
 }
 export function saveView(value: View) {
   try {
