@@ -49,12 +49,12 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/coverage-v8": "^4.1.11",
     "dependency-cruiser": "^18.5.0",
     "knip": "^6.39.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.3.5",
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "qs": "6.16.0"
