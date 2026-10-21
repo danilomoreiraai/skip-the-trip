@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() =>
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() =>
     localStorage.setItem("skip-the-trip:analytics-consent:v1", "declined"),
   );
-  await page.route("**/locations/HH5/status", (route) =>
+  await context.route("**/locations/HH5/status", (route) =>
     route.fulfill({
       json: {
         building: "HH5",
@@ -24,7 +24,7 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   );
-  await page.route("**/reports?**", (route) =>
+  await context.route("**/reports?**", (route) =>
     route.fulfill({
       json: {
         building: "HH5",
@@ -108,4 +108,42 @@ test("a failed refresh makes stale information explicit", async ({ page }) => {
     .getByRole("button", { name: "Refresh status", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText("may be out of date");
+});
+
+test("favorite changes and removal stay consistent across browser tabs", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/HH5");
+  await expect(page.locator(".overview-bathroom")).toHaveCount(12);
+  const second = await context.newPage();
+  await second.goto("/HH5");
+  await expect(second.locator(".overview-bathroom")).toHaveCount(12);
+  await page
+    .getByRole("button", {
+      name: "Save favorite: HH5 floor 1 Female",
+      exact: true,
+    })
+    .click();
+  await expect(
+    second.getByRole("region", { name: "Your favorite" }),
+  ).toContainText("Floor 1");
+  await expect(
+    second.getByRole("region", { name: "Your favorite" }),
+  ).toContainText("Female");
+  await second
+    .getByRole("button", {
+      name: "Save favorite: HH5 floor 2 Male",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Your favorite" }),
+  ).toContainText("Floor 2");
+  await second
+    .getByRole("button", { name: "Remove favorite", exact: true })
+    .click();
+  await expect(page.getByRole("region", { name: "Your favorite" })).toHaveCount(
+    0,
+  );
 });

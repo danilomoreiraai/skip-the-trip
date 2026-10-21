@@ -55,6 +55,8 @@ describe("explicit browser preferences", () => {
       },
     });
     expect(loadFavorite()).toBeNull();
+    const current = { building: "HH5", floor: "G", category: "Male" } as const;
+    expect(loadFavorite(current)).toEqual(current);
     expect(() => saveFavorite(null)).not.toThrow();
     expect(() => saveView("overview")).not.toThrow();
   });
