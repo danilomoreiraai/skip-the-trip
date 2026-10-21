@@ -3,7 +3,9 @@ import { type Bathroom, bathroomSchema } from "../domain/bathroom";
 const FAVORITE_KEY = "skip-the-trip:favorite:v1";
 const VIEW_KEY = "skip-the-trip:view:v1";
 export type View = "overview" | "contribute";
-export function loadFavorite(): Bathroom | null {
+export function loadFavorite(
+  fallback: Bathroom | null = null,
+): Bathroom | null {
   try {
     const parsed = bathroomSchema.safeParse(
       JSON.parse(localStorage.getItem(FAVORITE_KEY) ?? "null"),
@@ -12,7 +14,7 @@ export function loadFavorite(): Bathroom | null {
       ? parsed.data
       : null;
   } catch {
-    return null;
+    return fallback;
   }
 }
 export function saveFavorite(value: Bathroom | null) {

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
     localStorage.setItem("skip-the-trip:analytics-consent:v1", "declined");
     if (!sessionStorage.getItem("push-fixture")) {
       localStorage.setItem(
@@ -35,7 +35,9 @@ test.beforeEach(async ({ page }) => {
       configurable: true,
       value: () => {},
     });
-    let granted = "default";
+    let granted = window.location.search.includes("denied")
+      ? "default"
+      : "granted";
     Object.defineProperty(window, "Notification", {
       configurable: true,
       value: {
@@ -51,7 +53,7 @@ test.beforeEach(async ({ page }) => {
       },
     });
   });
-  await page.route("**/locations/HH5/status", (route) =>
+  await context.route("**/locations/HH5/status", (route) =>
     route.fulfill({
       json: {
         building: "HH5",
@@ -72,7 +74,7 @@ test.beforeEach(async ({ page }) => {
       },
     }),
   );
-  await page.route("**/push/config", (route) =>
+  await context.route("**/push/config", (route) =>
     route.fulfill({ json: { enabled: true, publicKey: "BAAA" } }),
   );
 });
@@ -137,4 +139,60 @@ test("denied notification permission keeps consultation available and creates no
     page.getByRole("heading", { name: "HH5 overview" }),
   ).toBeVisible();
   expect(writes).toBe(0);
+});
+
+test("the latest browser favorite survives refocusing an older tab", async ({
+  page,
+  context,
+}) => {
+  let bathroom = { building: "HH5", floor: "G", category: "Male" };
+  await context.route("**/push/subscription", (route) => {
+    const method = route.request().method();
+    if (method === "PUT") {
+      const incoming = route.request().postDataJSON().bathroom;
+      if (Object.keys(incoming).sort().join(",") !== "building,category,floor")
+        return route.fulfill({
+          status: 400,
+          json: { message: "Unknown properties" },
+        });
+      bathroom = incoming;
+    }
+    return method === "GET"
+      ? route.fulfill({ json: { subscribed: true, bathroom } })
+      : route.fulfill({ status: 204 });
+  });
+  await page.goto("/HH5");
+  await expect(
+    page.getByRole("button", {
+      name: "Turn off cleaning notifications",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const second = await context.newPage();
+  await second.goto("/HH5");
+  await second
+    .getByRole("button", {
+      name: "Save favorite: HH5 floor 1 Female",
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(() => bathroom)
+    .toMatchObject({ floor: "1", category: "Female" });
+  await page.bringToFront();
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(
+    page.getByRole("region", { name: "Your favorite" }),
+  ).toContainText("Floor 1");
+  await second.bringToFront();
+  await second.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+    window.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect
+    .poll(() => bathroom)
+    .toMatchObject({ floor: "1", category: "Female" });
 });

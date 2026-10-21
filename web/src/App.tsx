@@ -554,9 +554,27 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
         : loadView(),
   );
   const [favorite, setFavorite] = useState(loadFavorite);
+  useEffect(() => {
+    const refresh = () =>
+      setFavorite((previous) => {
+        const latest = loadFavorite(previous);
+        return JSON.stringify(previous) === JSON.stringify(latest)
+          ? previous
+          : latest;
+      });
+    window.addEventListener("storage", refresh);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
   const changeFavorite = (value: Bathroom | null) => {
-    saveFavorite(value);
-    setFavorite(value);
+    const normalized = value ? bathroomSchema.parse(value) : null;
+    saveFavorite(normalized);
+    setFavorite(normalized);
   };
   const changeView = (value: View) => {
     saveView(value);

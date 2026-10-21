@@ -3,6 +3,7 @@ import {
   allowedPushEndpoint,
   decryptSubscription,
   encryptSubscription,
+  PushRequestError,
 } from "./push-security.js";
 
 describe("push credentials and outbound destination protection", () => {
@@ -21,6 +22,10 @@ describe("push credentials and outbound destination protection", () => {
       "https://secret@fcm.googleapis.com/fcm/send/test",
       "https://fcm.googleapis.com:8443/fcm/send/test",
       "https://web.push.apple.com/Qtest#secret",
+      "https://fcm.googleapis.com/fcm/send/test?secret=value",
+      "https://fcm.googleapis.com/other",
+      "https://updates.push.services.mozilla.com/other",
+      "https://web.push.apple.com/",
       "garbage",
     ])
       expect(allowedPushEndpoint(endpoint)).toBe(false);
@@ -40,4 +45,10 @@ describe("push credentials and outbound destination protection", () => {
     ).toThrow();
     expect(() => decryptSubscription(`broken.${ciphertext}`, key)).toThrow();
   });
+});
+
+it("keeps subscription errors bounded and carries the HTTP status", () => {
+  const error = new PushRequestError(409);
+  expect(error.statusCode).toBe(409);
+  expect(error.message).toBe("Notification preference could not be updated");
 });

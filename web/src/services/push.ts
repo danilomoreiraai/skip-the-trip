@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { type Bathroom, bathroomSchema } from "../domain/bathroom";
 import { env } from "../env";
+import { loadFavorite } from "./preferences";
 
 let writes: Promise<void> = Promise.resolve();
 function serialize(operation: () => Promise<void>) {
@@ -47,7 +48,7 @@ async function save(favorite: Bathroom, subscription: PushSubscription) {
     method: "PUT",
     headers: { "content-type": "application/json", "x-push-client": "1" },
     body: JSON.stringify({
-      bathroom: favorite,
+      bathroom: bathroomSchema.parse(favorite),
       subscription: subscription.toJSON(),
     }),
   });
@@ -104,10 +105,16 @@ async function removeSubscription() {
 }
 export function syncPushFavorite(favorite: Bathroom | null) {
   return serialize(async () => {
+    // A queued reconciliation from another tab must not replace the latest choice.
+    const isCurrent = () =>
+      JSON.stringify(loadFavorite(favorite)) ===
+      JSON.stringify(favorite ? bathroomSchema.parse(favorite) : null);
+    if (!isCurrent()) return;
     if (!favorite || !supportsPush() || Notification.permission !== "granted")
       return removeSubscription();
     const registration = await navigator.serviceWorker.getRegistration("/");
     const subscription = await registration?.pushManager.getSubscription();
+    if (!isCurrent()) return;
     if (!subscription) return removeSubscription();
     await save(favorite, subscription);
   });

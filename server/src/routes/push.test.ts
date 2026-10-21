@@ -107,6 +107,20 @@ describe("push subscription ownership and consent boundaries", () => {
         })
       ).statusCode,
     ).toBe(204);
+    expect(
+      (await server.inject({ method: "DELETE", url: "/push/subscription" }))
+        .statusCode,
+    ).toBe(403);
+    const removed = await server.inject({
+      method: "DELETE",
+      url: "/push/subscription",
+      headers: {
+        ...headers,
+        cookie: "__Host-skip-the-trip-push=" + "a".repeat(64),
+      },
+    });
+    expect(removed.statusCode).toBe(204);
+    expect(removed.headers["set-cookie"]).toContain("Max-Age=0");
     await server.close();
   });
 });

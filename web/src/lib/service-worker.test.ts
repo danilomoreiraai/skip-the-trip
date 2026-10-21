@@ -1,8 +1,24 @@
 import { readFileSync } from "node:fs";
 import { runInNewContext } from "node:vm";
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 
-function worker() {
+function worker(
+  options: {
+    delayAt?: "fetch" | "body" | "claim";
+    advance?: number;
+    hangBody?: Promise<void>;
+  } = {},
+) {
+  let now = Date.now();
+  const initial = now;
+  class Clock extends Date {
+    static now() {
+      return now;
+    }
+  }
+  const delay = (stage: string) => {
+    if (stage === options.delayAt) now = initial + (options.advance ?? 90_000);
+  };
   const handlers = new Map<string, (event: unknown) => void>();
   const displayed: Array<Record<string, unknown>> = [];
   const opened: string[] = [];
@@ -25,8 +41,10 @@ function worker() {
     addEventListener: (name: string, handler: (event: unknown) => void) =>
       handlers.set(name, handler),
     registration: {
-      getNotifications: async ({ tag }: { tag: string }) =>
-        displayed.filter((value) => value.tag === tag),
+      getNotifications: async ({ tag }: { tag: string }) => {
+        delay("claim");
+        return displayed.filter((value) => value.tag === tag);
+      },
       showNotification: async (title: string, value: Record<string, unknown>) =>
         displayed.push({ title, ...value }),
     },
@@ -42,28 +60,37 @@ function worker() {
     {
       self,
       URL,
-      Date,
+      Date: Clock,
       Promise,
-      fetch: async (url: string) => ({
-        ok: true,
-        json: async () =>
-          url.endsWith("/push/subscription")
-            ? {
-                subscribed,
-                bathroom: { building: "HH5", floor: "G", category: "Male" },
-              }
-            : {
-                generatedAt: new Date().toISOString(),
-                cleaning: [
-                  {
-                    ...payload,
-                    id: payload.cycleId,
-                    state: active ? "active" : "ended",
-                    endedAt: active ? null : new Date().toISOString(),
-                  },
-                ],
-              },
-      }),
+      AbortController,
+      setTimeout,
+      clearTimeout,
+      fetch: async (url: string) => {
+        delay("fetch");
+        return {
+          ok: true,
+          json: async () => {
+            delay("body");
+            await options.hangBody;
+            return url.endsWith("/push/subscription")
+              ? {
+                  subscribed,
+                  bathroom: { building: "HH5", floor: "G", category: "Male" },
+                }
+              : {
+                  generatedAt: new Date(initial).toISOString(),
+                  cleaning: [
+                    {
+                      ...payload,
+                      id: payload.cycleId,
+                      state: active ? "active" : "ended",
+                      endedAt: active ? null : new Date().toISOString(),
+                    },
+                  ],
+                };
+          },
+        };
+      },
     },
   );
   async function dispatch(name: string, event: Record<string, unknown>) {
@@ -128,4 +155,45 @@ it("discards expired, ended, unsubscribed and malformed push messages", async ()
   expect(stale.displayed).toHaveLength(0);
   await stale.push({ ...stale.payload, building: "HH1" });
   expect(stale.displayed).toHaveLength(0);
+});
+
+it.each(["fetch", "body", "claim"] as const)(
+  "rechecks alert age after waiting for %s",
+  async (delayAt) => {
+    const value = worker({ delayAt, advance: 90_000 });
+    await value.push();
+    expect(value.displayed).toHaveLength(0);
+  },
+);
+it.each(["fetch", "body", "claim"] as const)(
+  "rechecks cleaning deadline after waiting for %s",
+  async (delayAt) => {
+    const value = worker({ delayAt, advance: 45_000 });
+    value.payload.expectedEndAt = new Date(Date.now() + 30_000).toISOString();
+    await value.push();
+    expect(value.displayed).toHaveLength(0);
+  },
+);
+it("bounds stalled verification and never displays after a timed-out body eventually resolves", async () => {
+  vi.useFakeTimers();
+  try {
+    let release = () => {};
+    const hangBody = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const value = worker({ hangBody });
+    const pending = value.push();
+    let finished = false;
+    void pending.then(() => {
+      finished = true;
+    });
+    await vi.advanceTimersByTimeAsync(10_001);
+    expect(finished).toBe(true);
+    release();
+    await pending;
+    await vi.advanceTimersByTimeAsync(1);
+    expect(value.displayed).toHaveLength(0);
+  } finally {
+    vi.useRealTimers();
+  }
 });

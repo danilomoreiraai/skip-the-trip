@@ -116,3 +116,115 @@ it("serializes a favorite change before a subsequent opt-out so an in-flight upd
     "DELETE",
   ]);
 });
+it("sends only bathroom identity when a favorite originated from an overview report", async () => {
+  const summary = {
+    ...favorite,
+    available: true,
+    yesCount: 3,
+    noCount: 0,
+    reportedAt: "2026-10-20T10:00:00.000Z",
+    expiresAt: "2026-10-20T10:30:00.000Z",
+  };
+  await enablePush(summary, "BAAA");
+  const write = vi
+    .mocked(fetch)
+    .mock.calls.find(([, init]) => init?.method === "PUT");
+  expect(JSON.parse(String(write?.[1]?.body)).bathroom).toEqual({
+    building: "HH5",
+    floor: "G",
+    category: "Male",
+  });
+});
+
+it("does not reconcile a stale tab over a newer persisted favorite", async () => {
+  vi.stubGlobal("localStorage", {
+    getItem: () => JSON.stringify({ ...favorite, floor: "2" }),
+  });
+  await syncPushFavorite(favorite);
+  await syncPushFavorite(null);
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+it("creates a browser subscription with the public key and rolls it back if the server refuses it", async () => {
+  const created = subscription;
+  if (!created) throw new Error("Missing subscription fixture");
+  const subscribe = vi.fn(async () => created);
+  const registration = {
+    pushManager: { getSubscription: async () => null, subscribe },
+  };
+  const register = vi.fn(async () => registration);
+  vi.stubGlobal("navigator", {
+    serviceWorker: { register, ready: Promise.resolve(registration) },
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response(null, { status: 409 })),
+  );
+  await expect(enablePush(favorite, "BAAA")).rejects.toThrow(
+    "Notification request failed",
+  );
+  expect(register).toHaveBeenCalledWith(
+    expect.stringContaining("/sw.js?api="),
+    { scope: "/" },
+  );
+  expect(subscribe).toHaveBeenCalledWith({
+    userVisibleOnly: true,
+    applicationServerKey: new Uint8Array([4, 0, 0]),
+  });
+  expect(unsubscribe).toHaveBeenCalledOnce();
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringMatching(/\/push\/subscription$/),
+    expect.objectContaining({
+      method: "PUT",
+      cache: "no-store",
+      credentials: "include",
+      headers: { "content-type": "application/json", "x-push-client": "1" },
+    }),
+  );
+});
+it("preserves an existing browser subscription when a preference write fails", async () => {
+  vi.stubGlobal("fetch", async () => new Response(null, { status: 503 }));
+  await expect(enablePush(favorite, "BAAA")).rejects.toThrow();
+  expect(unsubscribe).not.toHaveBeenCalled();
+});
+it("removes server preferences when browser permission or subscription is gone", async () => {
+  permission = "denied";
+  await syncPushFavorite(favorite);
+  subscription = null;
+  permission = "granted";
+  await syncPushFavorite(favorite);
+  expect(vi.mocked(fetch).mock.calls.map(([, init]) => init?.method)).toEqual([
+    "DELETE",
+    "DELETE",
+  ]);
+});
+it("keeps server opt-out successful when native unsubscribe fails", async () => {
+  unsubscribe.mockRejectedValueOnce(new Error("native failure"));
+  await expect(disablePush()).resolves.toBeUndefined();
+  expect(fetch).toHaveBeenCalledWith(
+    expect.stringMatching(/\/push\/subscription$/),
+    expect.objectContaining({
+      method: "DELETE",
+      headers: { "x-push-client": "1" },
+    }),
+  );
+});
+
+it("ignores a reconciliation if another tab changes the favorite during browser lookup", async () => {
+  let persisted = favorite as {
+    building: string;
+    floor: string;
+    category: string;
+  };
+  vi.stubGlobal("localStorage", { getItem: () => JSON.stringify(persisted) });
+  vi.stubGlobal("navigator", {
+    serviceWorker: {
+      getRegistration: async () => {
+        persisted = { ...favorite, floor: "3" };
+        return { pushManager: { getSubscription: async () => subscription } };
+      },
+    },
+  });
+  await syncPushFavorite(favorite);
+  expect(fetch).not.toHaveBeenCalled();
+});

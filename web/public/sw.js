@@ -28,11 +28,18 @@ async function claim(cycleId, tag) {
   } catch { return (await self.registration.getNotifications({ tag })).length === 0; }
 }
 self.addEventListener("push", event => event.waitUntil((async () => {
+  const controller = new AbortController();
+  let cancelled = false;
+  let timer;
+  const timeout = new Promise(resolve => {
+    timer = setTimeout(() => { cancelled = true; controller.abort(); resolve(); }, 10000);
+  });
   try {
+    await Promise.race([timeout, (async () => {
     const data = event.data?.json();
     if (!data || data.type !== "cleaning-started" || data.building !== "HH5" || !["G", "1", "2", "3"].includes(data.floor) || !["Male", "Accessible", "Female"].includes(data.category) || !/^[0-9a-f-]{36}$/.test(data.cycleId) || !Number.isFinite(Date.parse(data.issuedAt)) || Date.now() - Date.parse(data.issuedAt) >= 60000 || Date.parse(data.issuedAt) > Date.now() + 60000) return;
     const root = api.href.replace(/\/$/, "");
-    const [statusResponse, preferenceResponse] = await Promise.all([fetch(`${root}/locations/HH5/status`, { cache: "no-store", credentials: "omit" }), fetch(`${root}/push/subscription`, { cache: "no-store", credentials: "include" })]);
+    const [statusResponse, preferenceResponse] = await Promise.all([fetch(`${root}/locations/HH5/status`, { cache: "no-store", credentials: "omit", signal: controller.signal }), fetch(`${root}/push/subscription`, { cache: "no-store", credentials: "include", signal: controller.signal })]);
     if (!statusResponse.ok || !preferenceResponse.ok) return;
     const [status, preference] = await Promise.all([statusResponse.json(), preferenceResponse.json()]);
     const chosen = preference.bathroom;
@@ -41,9 +48,15 @@ self.addEventListener("push", event => event.waitUntil((async () => {
     if (!current || Date.parse(current.expectedEndAt) <= Date.parse(status.generatedAt)) return;
     const tag = `cleaning-${data.cycleId}`;
     if (!await claim(data.cycleId, tag)) return;
+    // Recheck after every asynchronous verification, including deduplication.
+    const now = Date.now();
+    const end = Date.parse(current.expectedEndAt);
+    if (cancelled || now - Date.parse(data.issuedAt) >= 60000 || !Number.isFinite(end) || end <= now) return;
     const url = `/HH5?floor=${encodeURIComponent(data.floor)}&category=${encodeURIComponent(data.category)}`;
     await self.registration.showNotification("Cleaning reported by the team", { body: `HH5 · Floor ${data.floor} · ${data.category}. Check the app for the latest status.`, tag, renotify: false, icon: "/favicon.svg", data: { url } });
+    })()]);
   } catch { /* Failed or unverifiable messages are discarded without exposing credentials. */ }
+  finally { cancelled = true; clearTimeout(timer); controller.abort(); }
 })()));
 self.addEventListener("notificationclick", event => {
   event.notification.close();
