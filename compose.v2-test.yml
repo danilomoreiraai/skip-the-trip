@@ -1,0 +1,100 @@
+# Isolated v2 preview. Never use the production DATABASE_URL or volume.
+name: skip-the-trip-v2
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: skip_the_trip_v2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${V2_POSTGRES_PASSWORD:?Set a dedicated v2 password}
+    volumes:
+      - v2-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d skip_the_trip_v2"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+  migrate:
+    build:
+      context: ./server
+      args:
+        APP_REVISION: ${APP_REVISION:?Set the v2 branch commit SHA}
+    environment:
+      DATABASE_URL: postgresql://postgres:${V2_POSTGRES_PASSWORD}@db:5432/skip_the_trip_v2
+    command: ["npm", "run", "db:migrate:prod"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  server:
+    build:
+      context: ./server
+      args:
+        APP_REVISION: ${APP_REVISION:?Set the v2 branch commit SHA}
+    environment:
+      APP_REVISION: ${APP_REVISION}
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3333
+      DATABASE_URL: postgresql://postgres:${V2_POSTGRES_PASSWORD}@db:5432/skip_the_trip_v2
+      CORS_ORIGIN: https://skipthetrip.info
+      ANONYMOUS_COOKIE_SUFFIX: v2
+      REPORT_RETENTION_DAYS: 30
+      SENTRY_ENVIRONMENT: v2-test
+      SENTRY_RELEASE: ${APP_REVISION}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3333/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+  retention:
+    build:
+      context: ./server
+      args:
+        APP_REVISION: ${APP_REVISION}
+    environment:
+      DATABASE_URL: postgresql://postgres:${V2_POSTGRES_PASSWORD}@db:5432/skip_the_trip_v2
+      REPORT_RETENTION_DAYS: 30
+    command: ["sh", "-c", "while true; do npm run db:retention:prod; sleep 86400; done"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+  web:
+    build:
+      context: ./web
+      args:
+        APP_REVISION: ${APP_REVISION}
+        VITE_BASE_PATH: /teste2_0/
+        VITE_API_URL: /teste2_0/api
+        VITE_APP_ENV: staging
+        VITE_RELEASE: ${APP_REVISION}
+    depends_on:
+      server:
+        condition: service_healthy
+    networks: [default, easypanel]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]
+
+networks:
+  easypanel:
+    external: true
+volumes:
+  v2-postgres-data:

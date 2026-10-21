@@ -33,7 +33,8 @@ type AppOptions = {
     | "LOCATION_RADIUS_METERS"
     | "NODE_ENV"
     | "APP_REVISION"
-  >;
+  > &
+    Partial<Pick<Env, "ANONYMOUS_COOKIE_SUFFIX">>;
   reportsRepository: ReportsRepository;
   locationAuthorizationsRepository: LocationAuthorizationsRepository;
   captureException?: (
@@ -91,6 +92,7 @@ export async function buildApp({
       maxAccuracyMeters: config.LOCATION_MAX_ACCURACY_METERS,
     },
     secureCookie,
+    config.ANONYMOUS_COOKIE_SUFFIX,
   );
   registerBuildingStatusRoutes(app, reportsRepository);
   registerReportRoutes(
@@ -100,6 +102,7 @@ export async function buildApp({
     config.REPORT_WINDOW_MINUTES,
     config.VOTE_COOLDOWN_SECONDS,
     secureCookie,
+    config.ANONYMOUS_COOKIE_SUFFIX,
   );
   return app;
 }

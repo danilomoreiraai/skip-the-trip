@@ -8,6 +8,11 @@ const envSchema = z.object({
   HOST: z.string().min(1).default("0.0.0.0"),
   PORT: z.coerce.number().int().positive().max(65_535).default(3333),
   DATABASE_URL: z.string().url(),
+  ANONYMOUS_COOKIE_SUFFIX: z
+    .string()
+    .regex(/^[a-z0-9-]*$/)
+    .max(40)
+    .default(""),
   CORS_ORIGIN: z.string().min(1).default("http://localhost:5173"),
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])

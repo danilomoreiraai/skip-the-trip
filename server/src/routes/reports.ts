@@ -20,6 +20,7 @@ export function registerReportRoutes(
   windowMinutes: number,
   cooldownSeconds: number,
   secureCookie: boolean,
+  cookieSuffix = "",
 ) {
   app.get(
     "/reports",
@@ -54,7 +55,7 @@ export function registerReportRoutes(
         return reply
           .status(404)
           .send({ message: "Location not found", statusCode: 404 });
-      const anonymousId = readAnonymousId(request, secureCookie);
+      const anonymousId = readAnonymousId(request, secureCookie, cookieSuffix);
       const authorization = anonymousId
         ? await authorizations.findValid(anonymousId, body.building, new Date())
         : null;

@@ -2,8 +2,9 @@ import { z } from "zod";
 import { type Bathroom, bathroomSchema, type Report } from "../domain/bathroom";
 import { env } from "../env";
 import { injectTraceContext, observability } from "../lib/observability";
+import { storageKey } from "../lib/storage-key";
 
-const SELECTION_KEY = "skip-the-trip:selection";
+const SELECTION_KEY = storageKey("skip-the-trip:selection");
 const apiUrl = env.VITE_API_URL.replace(/\/$/, "");
 
 export const apiReportSchema = bathroomSchema.extend({

@@ -357,3 +357,47 @@ describe("location-authorized reports", () => {
     await app.close();
   });
 });
+
+describe("preview cookie isolation", () => {
+  it("uses a separate secure identity and ignores the beta cookie", async () => {
+    const app = await buildApp({
+      config: {
+        ...config,
+        NODE_ENV: "production",
+        ANONYMOUS_COOKIE_SUFFIX: "v2",
+      },
+      reportsRepository: createFakeReportsRepository(),
+      locationAuthorizationsRepository: createFakeAuthorizationsRepository(),
+    });
+    const cookie = await authorize(app);
+    expect(cookie).toContain("__Host-skip-the-trip-anonymous-id-v2=");
+    expect(cookie).toContain("Secure");
+    expect(cookie).toContain("HttpOnly");
+    const accepted = await app.inject({
+      url: "/locations/HH5/eligibility",
+      headers: { cookie },
+    });
+    expect(accepted.json().authorized).toBe(true);
+    const betaCookie = cookie.replace("anonymous-id-v2=", "anonymous-id=");
+    const ignored = await app.inject({
+      url: "/locations/HH5/eligibility",
+      headers: { cookie: betaCookie },
+    });
+    expect(ignored.json().authorized).toBe(false);
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/reports",
+      payload: vote,
+      headers: { cookie: betaCookie },
+    });
+    expect(blocked.statusCode).toBe(403);
+    const voted = await app.inject({
+      method: "POST",
+      url: "/reports",
+      payload: vote,
+      headers: { cookie },
+    });
+    expect(voted.statusCode).toBe(201);
+    await app.close();
+  });
+});

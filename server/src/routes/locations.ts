@@ -24,6 +24,7 @@ export function registerLocationRoutes(
   repository: LocationAuthorizationsRepository,
   location: LocationConfiguration,
   secureCookie: boolean,
+  cookieSuffix = "",
 ) {
   app.get(
     "/locations/:id/eligibility",
@@ -36,7 +37,7 @@ export function registerLocationRoutes(
     async (request, reply) => {
       reply.header("cache-control", "private, no-store");
       const { id } = locationParamsSchema.parse(request.params);
-      const anonymousId = readAnonymousId(request, secureCookie);
+      const anonymousId = readAnonymousId(request, secureCookie, cookieSuffix);
       if (!anonymousId) return { authorized: false, expiresAt: null };
       const authorization = await repository.findValid(
         anonymousId,
@@ -78,7 +79,12 @@ export function registerLocationRoutes(
           statusCode: 403,
         });
       }
-      const anonymousId = ensureAnonymousId(request, reply, secureCookie);
+      const anonymousId = ensureAnonymousId(
+        request,
+        reply,
+        secureCookie,
+        cookieSuffix,
+      );
       const now = new Date();
       const saved = await repository.authorize(
         anonymousId,

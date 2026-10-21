@@ -82,7 +82,7 @@ export function StatusPanel({
               {no > 0 && (
                 <span>
                   <img
-                    src="/assets/cleaning.png"
+                    src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
                     alt=""
                     loading="lazy"
                     decoding="async"

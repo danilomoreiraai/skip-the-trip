@@ -140,9 +140,9 @@ function ModalDialog({
   );
 }
 const categoryIcons: Record<Bathroom["category"], string> = {
-  Female: "/assets/bathroom-female.png",
-  Male: "/assets/bathroom-male.png",
-  Accessible: "/assets/bathroom-accessible.png",
+  Female: `${import.meta.env.BASE_URL}assets/bathroom-female.png`,
+  Male: `${import.meta.env.BASE_URL}assets/bathroom-male.png`,
+  Accessible: `${import.meta.env.BASE_URL}assets/bathroom-accessible.png`,
 };
 function CategoryIcon({ category }: { category: Bathroom["category"] }) {
   return (
@@ -739,7 +739,11 @@ export function App() {
               <i />
             </span>
             <span className="brand-name">SKIP THE TRIP</span>
-            <span className="brand-edition">Signal Core</span>
+            <span className="brand-edition">
+              {import.meta.env.BASE_URL === "/"
+                ? "Signal Core"
+                : "Version 2.0 · Test environment"}
+            </span>
           </Link>
         </header>
         <Suspense fallback={<AppSkeleton />}>

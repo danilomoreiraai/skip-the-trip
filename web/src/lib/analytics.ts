@@ -1,6 +1,9 @@
+import { storageKey } from "./storage-key";
 export type AnalyticsConsent = "accepted" | "declined";
 
-export const ANALYTICS_CONSENT_KEY = "skip-the-trip:analytics-consent:v1";
+export const ANALYTICS_CONSENT_KEY = storageKey(
+  "skip-the-trip:analytics-consent:v1",
+);
 
 declare global {
   interface Window {

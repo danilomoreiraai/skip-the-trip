@@ -1,8 +1,9 @@
 import { type Bathroom, bathroomSchema } from "../domain/bathroom";
+import { storageKey } from "../lib/storage-key";
 
-const FAVORITE_KEY = "skip-the-trip:favorite:v1";
-const VIEW_KEY = "skip-the-trip:view:v1";
-const DEVICE_KEY = "skip-the-trip:device:v1";
+const FAVORITE_KEY = storageKey("skip-the-trip:favorite:v1");
+const VIEW_KEY = storageKey("skip-the-trip:view:v1");
+const DEVICE_KEY = storageKey("skip-the-trip:device:v1");
 export type View = "overview" | "contribute";
 export type Device = "mobile" | "mac";
 export function loadDevice(): Device | null {
