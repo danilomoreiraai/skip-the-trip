@@ -332,5 +332,11 @@ describe("authoritative cleaning", () => {
     await expect(submitReport(location, true)).rejects.toMatchObject({
       expectedEndAt: "2026-10-20T10:15:00.000Z",
     });
+    vi.stubGlobal("fetch", async () =>
+      response({ code: "CLEANING_IN_PROGRESS", message: "Paused" }, 409),
+    );
+    await expect(submitReport(location, true)).rejects.toMatchObject({
+      expectedEndAt: null,
+    });
   });
 });

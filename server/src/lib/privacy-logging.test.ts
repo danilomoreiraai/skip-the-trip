@@ -20,6 +20,12 @@ describe("private request diagnostics", () => {
     app.post("/vote", async () => {
       throw new CleaningInProgressError(new Date("2026-10-20T10:15:00.000Z"));
     });
+    app.post("/unauthorized", async () => {
+      throw new OperationsError("STAFF_UNAUTHORIZED", 401);
+    });
+    expect(
+      (await app.inject({ method: "POST", url: "/unauthorized" })).statusCode,
+    ).toBe(401);
     const conflict = await app.inject({ method: "POST", url: "/cleaning" });
     expect(conflict.statusCode).toBe(409);
     expect(conflict.json()).toMatchObject({ code: "CLEANING_CONFLICT" });
@@ -31,6 +37,32 @@ describe("private request diagnostics", () => {
     });
     expect(cleaning.json().retryAfterSeconds).toBeUndefined();
     await app.close();
+  });
+  it("keeps sensitive unknown paths and query strings out of not-found logs and responses", async () => {
+    const logs: string[] = [];
+    const app = Fastify({
+      logger: {
+        ...privacyLogger("info"),
+        stream: new Writable({
+          write(chunk, _encoding, callback) {
+            logs.push(String(chunk));
+            callback();
+          },
+        }),
+      },
+    });
+    registerErrorHandler(app);
+    for (const url of [
+      "/unknown?latitude=secret-coordinate",
+      "/secret-invite-code?longitude=secret-coordinate",
+    ]) {
+      const response = await app.inject({ method: "GET", url });
+      expect(response.statusCode).toBe(404);
+      expect(response.body).not.toContain("secret-");
+    }
+    await app.close();
+    expect(logs.join("")).not.toContain("secret-coordinate");
+    expect(logs.join("")).not.toContain("secret-invite-code");
   });
   it("sanitizes response serialization failures before sending them to error tracking", async () => {
     const errors: unknown[] = [];

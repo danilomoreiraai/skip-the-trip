@@ -75,3 +75,27 @@ it("does not expose server payloads when staff credentials are rejected", async 
     "Staff access expired or invite invalid",
   );
 });
+
+it("reports conflict and server failure without exposing operational payloads", async () => {
+  for (const status of [409, 503]) {
+    vi.stubGlobal(
+      "fetch",
+      async () => new Response('{"message":"private-payload"}', { status }),
+    );
+    await expect(
+      sendCleaningCommand(session.csrfToken, {
+        building: "HH5",
+        floor: "G",
+        category: "Male",
+        action: "start",
+        minutes: 15,
+        commandId: "550e8400-e29b-41d4-a716-446655440001",
+      }),
+    ).rejects.toThrow(
+      status === 409 ? "Status changed" : "Staff request failed",
+    );
+    await expect(logoutStaff(session.csrfToken)).rejects.toThrow(
+      status === 409 ? "Status changed" : "Staff request failed",
+    );
+  }
+});

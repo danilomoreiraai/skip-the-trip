@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app.js";
-import { hashToken } from "../domain/cleaning.js";
+import { hashToken, token } from "../domain/cleaning.js";
 import type { OperationsRepository } from "../modules/operations/repository.js";
 
-const raw = "a".repeat(64);
+const raw = token();
 const csrf = hashToken(`csrf:${raw}`);
 const state = {
   id: "550e8400-e29b-41d4-a716-446655440099",
@@ -34,7 +34,14 @@ async function app(enabled = true) {
     },
     reportsRepository: {
       createWithCooldown: vi.fn(),
-      findSummary: vi.fn(),
+      findSummary: async (bathroom) => ({
+        ...bathroom,
+        available: null,
+        reportedAt: null,
+        expiresAt: null,
+        yesCount: 0,
+        noCount: 0,
+      }),
       findBuildingSummaries: vi.fn().mockResolvedValue([]),
       deleteExpired: vi.fn(),
       ping: vi.fn(),
@@ -45,11 +52,14 @@ async function app(enabled = true) {
       deleteExpired: vi.fn(),
     },
     operationsRepository: {
-      redeemInvite: vi.fn().mockResolvedValue({
-        token: raw,
-        expiresAt: new Date("2026-10-20T18:00:00.000Z"),
-        building: "HH5",
-      }),
+      redeemInvite: async (code: string) =>
+        code === raw
+          ? {
+              token: raw,
+              expiresAt: new Date("2026-10-20T18:00:00.000Z"),
+              building: "HH5",
+            }
+          : null,
       authenticate: async (hash: string) =>
         hash === hashToken(raw)
           ? {
@@ -65,6 +75,70 @@ async function app(enabled = true) {
   });
 }
 describe("staff HTTP boundaries", () => {
+  it("refuses invalid invitations, missing sessions and unauthenticated logout", async () => {
+    const server = await app();
+    expect(
+      (
+        await server.inject({
+          method: "POST",
+          url: "/staff/session",
+          headers: { origin: "http://localhost:5173" },
+          payload: { code: hashToken(raw + "invalid") },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (await server.inject({ method: "GET", url: "/staff/session" }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (await server.inject({ method: "DELETE", url: "/staff/session" }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      (
+        await server.inject({
+          method: "DELETE",
+          url: "/staff/session",
+          headers: { origin: "http://localhost:5173" },
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(
+      (
+        await server.inject({
+          method: "DELETE",
+          url: "/staff/session",
+          headers: {
+            origin: "http://localhost:5173",
+            cookie: `skip-the-trip-staff=${raw}`,
+          },
+        })
+      ).statusCode,
+    ).toBe(403);
+    await server.close();
+  });
+  it("includes team cleaning only for the requested bathroom in public report reads", async () => {
+    const server = await app();
+    const selected = await server.inject({
+      method: "GET",
+      url: "/reports?building=HH5&floor=G&category=Male",
+    });
+    expect(selected.statusCode).toBe(200);
+    expect(selected.json()).toMatchObject({
+      available: null,
+      cleaning: { state: "active" },
+    });
+    expect(
+      (
+        await server.inject({
+          method: "GET",
+          url: "/reports?building=HH5&floor=1&category=Female",
+        })
+      ).json().cleaning,
+    ).toBeNull();
+    await server.close();
+  });
   it("requires an allowed Origin before exchanging a code and uses an HttpOnly cookie", async () => {
     const server = await app();
     expect(
