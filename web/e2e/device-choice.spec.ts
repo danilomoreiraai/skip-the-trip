@@ -229,3 +229,108 @@ test("blocked session storage still permits choosing and changing the experience
     page.getByRole("heading", { name: "How are you joining?" }),
   ).toBeVisible();
 });
+
+for (const pendingStep of ["geolocation", "verification"] as const) {
+  test(`changing to Mac cancels a pending ${pendingStep} from an earlier contribution screen`, async ({
+    page,
+  }) => {
+    await page.addInitScript((step) => {
+      Object.defineProperty(navigator, "geolocation", {
+        value: {
+          getCurrentPosition(success: PositionCallback) {
+            Object.assign(window, {
+              finishPendingLocation: () =>
+                success({
+                  coords: {
+                    latitude: 51.907327,
+                    longitude: -8.513503,
+                    accuracy: 20,
+                  },
+                  timestamp: Date.now(),
+                } as GeolocationPosition),
+            });
+            if (step === "verification") {
+              (
+                window as unknown as { finishPendingLocation: () => void }
+              ).finishPendingLocation();
+            }
+          },
+        },
+      });
+    }, pendingStep);
+    const writes: string[] = [];
+    let finishVerification: (() => Promise<void>) | undefined;
+    await page.route("**/reports", (route) => {
+      writes.push("vote");
+      return route.fulfill({
+        status: 403,
+        json: {
+          code: "LOCATION_VERIFICATION_REQUIRED",
+          message: "Confirm your location to vote.",
+          statusCode: 403,
+        },
+      });
+    });
+    await page.route("**/locations/HH5/verify-location", (route) => {
+      writes.push("verify");
+      const respond = () =>
+        route.fulfill({
+          json: {
+            authorized: true,
+            expiresAt: new Date(Date.now() + 14400000).toISOString(),
+          },
+        });
+      if (pendingStep === "verification") finishVerification = respond;
+      else return respond();
+    });
+    await page.goto("/?view=overview");
+    await page
+      .getByRole("button", { name: "Mobile device", exact: true })
+      .click();
+    await page.getByRole("link", { name: "HH5 building page" }).click();
+    await page.getByRole("button", { name: "Contribute", exact: true }).click();
+    await page.getByRole("button", { name: "HH5", exact: true }).click();
+    await page.getByRole("button", { name: "1", exact: true }).click();
+    await page.getByRole("button", { name: "Female", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Yes, available", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Confirm location", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "Confirming your location…",
+        exact: true,
+      }),
+    ).toBeDisabled();
+    if (pendingStep === "verification")
+      await expect.poll(() => Boolean(finishVerification)).toBe(true);
+    await page.goBack();
+    await page
+      .getByRole("button", { name: "Change device", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Mac", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "HH5 overview" }),
+    ).toBeVisible();
+    if (pendingStep === "geolocation")
+      await page.evaluate(() => {
+        (
+          window as unknown as { finishPendingLocation: () => void }
+        ).finishPendingLocation();
+      });
+    else await finishVerification?.();
+    await page.evaluate(async () => {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+    });
+    expect(writes).toEqual(
+      pendingStep === "geolocation" ? ["vote"] : ["vote", "verify"],
+    );
+    await expect(page.getByRole("button", { name: /Contribute/ })).toHaveCount(
+      0,
+    );
+  });
+}

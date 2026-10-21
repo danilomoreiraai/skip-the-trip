@@ -179,6 +179,13 @@ function Home({
     idempotencyKey: string;
   } | null>(null);
   const [verifyingLocation, setVerifyingLocation] = useState(false);
+  const locationFlowActive = useRef(true);
+  useEffect(() => {
+    locationFlowActive.current = true;
+    return () => {
+      locationFlowActive.current = false;
+    };
+  }, []);
   const locationJustVerified = useRef(false);
   const voteTrigger = useRef<HTMLButtonElement | null>(null);
   const client = useQueryClient();
@@ -246,7 +253,7 @@ function Home({
     },
   });
   const requestLocationAndVote = async () => {
-    if (!pendingVote) return;
+    if (!pendingVote || !locationFlowActive.current) return;
     setVerifyingLocation(true);
     try {
       const getPosition = (options: PositionOptions) =>
@@ -261,6 +268,7 @@ function Home({
           timeout: 10_000,
         });
       } catch (error) {
+        if (!locationFlowActive.current) return;
         if (
           typeof error !== "object" ||
           error === null ||
@@ -275,10 +283,13 @@ function Home({
           timeout: 20_000,
         });
       }
+      if (!locationFlowActive.current) return;
       await verifyLocation("HH5", position.coords);
+      if (!locationFlowActive.current) return;
       locationJustVerified.current = true;
       mutation.mutate(pendingVote);
     } catch (error) {
+      if (!locationFlowActive.current) return;
       locationJustVerified.current = false;
       let failure: GeolocationFailureCategory = "unexpected";
       if (
@@ -312,7 +323,7 @@ function Home({
       }
       void reportGeolocationFailure(failure);
     } finally {
-      setVerifyingLocation(false);
+      if (locationFlowActive.current) setVerifyingLocation(false);
     }
   };
   const vote = (location: Bathroom, available: boolean) =>
