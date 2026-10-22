@@ -30,7 +30,7 @@ services:
         condition: service_healthy
     restart: "no"
 
-  server:
+  skip-the-trip-v2-api:
     build:
       context: ./server
       args:
@@ -77,12 +77,13 @@ services:
       context: ./web
       args:
         APP_REVISION: ${APP_REVISION}
+        API_HOST: skip-the-trip-v2-api
         VITE_BASE_PATH: /teste2_0/
         VITE_API_URL: /teste2_0/api
         VITE_APP_ENV: staging
         VITE_RELEASE: ${APP_REVISION}
     depends_on:
-      server:
+      skip-the-trip-v2-api:
         condition: service_healthy
     networks: [default, easypanel]
     healthcheck:

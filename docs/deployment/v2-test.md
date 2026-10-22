@@ -15,6 +15,10 @@ preview prefix internally because EasyPanel forwards it unchanged. Vite's base
 and BrowserRouter keep navigation, lazy chunks, icons and API requests under
 `/teste2_0/`. Do not change the existing root domain route.
 
+The web image pins its upstream to the unique Compose service `skip-the-trip-v2-api`.
+Do not use the generic `server` name here: web also joins EasyPanel's shared
+network, where the current beta has the same generic service alias.
+
 The preview has its own PostgreSQL volume and database, no published database
 or API ports, a distinct anonymous identity cookie, and browser preferences
 namespaced by base path. Analytics and remote telemetry exporters are unset.

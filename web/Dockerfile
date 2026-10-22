@@ -26,8 +26,10 @@ RUN printf '%s\n' "$APP_REVISION" | grep -Eq '^([0-9a-f]{40}|local)$' \
 
 FROM nginx:1.27-alpine AS production
 ARG APP_REVISION=local
+ARG API_HOST=server
 LABEL org.opencontainers.image.revision=$APP_REVISION
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN sed -i "s/server server:3333 resolve;/server ${API_HOST}:3333 resolve;/" /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
 EXPOSE 80
 HEALTHCHECK --interval=10s --timeout=3s --retries=5 \
