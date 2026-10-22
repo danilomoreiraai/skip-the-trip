@@ -21,6 +21,17 @@ test("preview isolates preferences and keeps navigation, assets and API under it
     );
     sessionStorage.setItem("skip-the-trip:device:v1", "mobile");
   });
+  const previewBase =
+    process.env.PREVIEW_BASE_URL ?? "http://localhost:8082/teste2_0/";
+  const webRelease = await page.request.get(
+    new URL("release.json", previewBase).href,
+  );
+  const apiRelease = await page.request.get(
+    new URL("api/release", previewBase).href,
+  );
+  expect(webRelease.ok()).toBe(true);
+  expect(apiRelease.ok()).toBe(true);
+  expect(await apiRelease.json()).toEqual(await webRelease.json());
   const escaped: string[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
