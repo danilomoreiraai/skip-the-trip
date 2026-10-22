@@ -5,13 +5,15 @@ Public entry: https://skipthetrip.info/teste2_0/ .
 
 The EasyPanel Compose service `personal_projects/skip-the-trip-v2` uses
 `compose.v2-test.yml` from this branch, with a dedicated `V2_POSTGRES_PASSWORD`
-and the exact deployed commit as `APP_REVISION`. There is no automatic deploy:
+and the exact deployed commit as `APP_REVISION`. Enable **Create .env file**
+in the Compose environment editor so Docker Compose can interpolate them. There is no automatic deploy:
 pushes update the branch; a reviewed revision is deployed explicitly.
 
 Configure a domain route with host `skipthetrip.info`, path `/teste2_0`, destination
-Compose service `web`, HTTP port 80, destination path `/`. The proxy removes the
-prefix; Vite's base and BrowserRouter keep navigation, lazy chunks, icons and
-API requests under `/teste2_0/`. Do not change the existing root domain route.
+Compose service `web`, HTTP port 80, destination path `/`. Nginx removes the
+preview prefix internally because EasyPanel forwards it unchanged. Vite's base
+and BrowserRouter keep navigation, lazy chunks, icons and API requests under
+`/teste2_0/`. Do not change the existing root domain route.
 
 The preview has its own PostgreSQL volume and database, no published database
 or API ports, a distinct anonymous identity cookie, and browser preferences
