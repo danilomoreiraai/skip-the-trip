@@ -77,7 +77,8 @@ export function FavoriteSummary({
     <>
       <BathroomIcon category={favorite.category} />
       <span aria-hidden="true">
-        {favorite.building} F{favorite.floor}
+        {favorite.building}{" "}
+        {favorite.floor === "G" ? "GF" : `F${favorite.floor}`}
       </span>
       <span id={locationId} className="sr-only">
         {favorite.building} · Floor {favorite.floor} · {favorite.category}

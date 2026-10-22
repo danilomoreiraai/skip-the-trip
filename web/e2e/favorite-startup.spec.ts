@@ -192,3 +192,61 @@ test("a favorite saved in another tab appears at startup and survives device cho
   ).toBeVisible();
   await expect(card).toHaveCount(0);
 });
+
+test("ground floor favorite uses GF and centers its icon and location between the edge controls", async ({
+  context,
+  page,
+}, testInfo) => {
+  const groundFloor = { building: "HH5", floor: "G", category: "Male" };
+  await context.addInitScript(
+    (value) =>
+      localStorage.setItem("skip-the-trip:favorite:v1", JSON.stringify(value)),
+    groundFloor,
+  );
+  await page.route("**/reports?**", (route) =>
+    route.fulfill({
+      json: {
+        ...groundFloor,
+        available: true,
+        reportedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 60000).toISOString(),
+        yesCount: 1,
+        noCount: 0,
+      },
+    }),
+  );
+  await page.goto("/");
+  const card = page.getByRole("region", { name: "Your favorite", exact: true });
+  await expect(card).toContainText("Available");
+  const label = card.locator(".favorite-location > span[aria-hidden]");
+  await expect(label).toHaveText("HH5 GF");
+  for (const width of [320, 375, 1440]) {
+    await page.setViewportSize({ width, height: 812 });
+    const strip = await card.locator(".favorite-strip").boundingBox();
+    const icon = await card.locator(".bathroom-icon").boundingBox();
+    const text = await label.boundingBox();
+    const star = await card
+      .getByRole("button", { name: "Remove favorite", exact: true })
+      .boundingBox();
+    const status = await card.locator(".favorite-status").boundingBox();
+    if (!strip || !icon || !text || !star || !status)
+      throw new Error("Favorite strip geometry missing");
+    expect(
+      Math.abs(
+        (icon.x + text.x + text.width) / 2 - (strip.x + strip.width / 2),
+      ),
+    ).toBeLessThanOrEqual(1);
+    expect(star.x - strip.x).toBeLessThanOrEqual(6);
+    expect(strip.x + strip.width - status.x - status.width).toBeLessThanOrEqual(
+      6,
+    );
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`favorite-gf-${width}.png`),
+    });
+  }
+});
