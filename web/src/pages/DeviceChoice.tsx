@@ -28,12 +28,12 @@ export function DeviceChoice({
       <div className="device-options">
         <button
           type="button"
-          className="device-option"
+          className="option device-option"
           aria-labelledby="mobile-device-title"
           aria-describedby="mobile-device-description"
           onClick={() => onChoose("mobile")}
         >
-          <Smartphone size={40} strokeWidth={1.6} aria-hidden="true" />
+          <Smartphone size={48} strokeWidth={1.6} aria-hidden="true" />
           <span id="mobile-device-title" className="device-title">
             Mobile device
           </span>
@@ -46,12 +46,12 @@ export function DeviceChoice({
         </button>
         <button
           type="button"
-          className="device-option"
+          className="option device-option"
           aria-labelledby="mac-device-title"
           aria-describedby="mac-device-description"
           onClick={() => onChoose("mac")}
         >
-          <Laptop size={40} strokeWidth={1.6} aria-hidden="true" />
+          <Laptop size={48} strokeWidth={1.6} aria-hidden="true" />
           <span id="mac-device-title" className="device-title">
             Mac
           </span>

@@ -120,7 +120,9 @@ test("Mac stays in consultation through links, favorites and reload then can cha
   await page.goto("/?view=contribute");
   await page.getByRole("button", { name: "Mac", exact: true }).click();
   await expect(page.locator(".overview-bathroom")).toHaveCount(12);
-  await expect(page.getByRole("button", { name: /Contribute/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Contribute|Vote:/ }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Yes, available", exact: true }),
   ).toHaveCount(0);
@@ -146,7 +148,9 @@ test("Mac stays in consultation through links, favorites and reload then can cha
     page.getByRole("heading", { name: "HH5 overview" }),
   ).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: /Contribute/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Contribute|Vote:/ }),
+  ).toHaveCount(0);
   expect(writes).toEqual([]);
   await page
     .getByRole("button", { name: "Change device", exact: true })
@@ -197,7 +201,9 @@ test("manual mobile choice permits voting but still requires location confirmati
   await expect(
     page.getByRole("heading", { name: "HH5 overview" }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Contribute/ })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /Contribute|Vote:/ }),
+  ).toHaveCount(0);
 });
 
 test("blocked session storage still permits choosing and changing the experience", async ({
@@ -329,8 +335,8 @@ for (const pendingStep of ["geolocation", "verification"] as const) {
     expect(writes).toEqual(
       pendingStep === "geolocation" ? ["vote"] : ["vote", "verify"],
     );
-    await expect(page.getByRole("button", { name: /Contribute/ })).toHaveCount(
-      0,
-    );
+    await expect(
+      page.getByRole("button", { name: /Contribute|Vote:/ }),
+    ).toHaveCount(0);
   });
 }

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
+import { BathroomIcon } from "../components/BathroomIcon";
 import { FavoriteButton } from "../components/Favorite";
 import { type Bathroom, bathroomKey, floors } from "../domain/bathroom";
 import { getBuildingStatus } from "../services/building";
@@ -23,7 +24,7 @@ export function Overview({
   });
   return (
     <main className="overview-layout">
-      <section className="overview-intro">
+      <section className="overview-intro product-intro">
         <span className="eyebrow">Live building utility</span>
         <h1>HH5 overview</h1>
         <p>
@@ -31,6 +32,8 @@ export function Overview({
             ? "Check each floor. Location is only needed when you contribute."
             : "Check live status on each floor. No location access needed."}
         </p>
+      </section>
+      <div className="overview-tools">
         <button
           type="button"
           onClick={() => void query.refetch()}
@@ -45,7 +48,7 @@ export function Overview({
             {new Date(query.data.generatedAt).toLocaleTimeString("en-GB")}
           </p>
         )}
-      </section>
+      </div>
       {query.isPending && <p role="status">Loading building status…</p>}
       {query.isError && (
         <p role="alert" className="overview-warning">
@@ -72,18 +75,19 @@ export function Overview({
                     className={`overview-bathroom ${bathroom.available === null ? "unknown" : bathroom.available ? "available" : "unavailable"}`}
                     key={bathroom.category}
                   >
+                    <BathroomIcon category={bathroom.category} />
                     <h3>{bathroom.category}</h3>
                     <p className="overview-state">
                       {bathroom.available === null
                         ? "No recent information"
                         : bathroom.available
-                          ? "Available · community report"
-                          : "Unavailable · community report"}
+                          ? "Available"
+                          : "Unavailable"}
                     </p>
                     <p className="report-time">
                       {bathroom.reportedAt
                         ? `Reported at ${new Date(bathroom.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
-                        : "No community reports yet"}
+                        : "No reports yet"}
                     </p>
                     <div className="overview-actions">
                       <FavoriteButton
@@ -94,10 +98,10 @@ export function Overview({
                       {onContribute && (
                         <button
                           type="button"
-                          aria-label={`Contribute: HH5 floor ${floor} ${bathroom.category}`}
+                          aria-label={`Vote: HH5 floor ${floor} ${bathroom.category}`}
                           onClick={() => onContribute(bathroom)}
                         >
-                          Contribute
+                          Vote <span aria-hidden="true">→</span>
                         </button>
                       )}
                     </div>

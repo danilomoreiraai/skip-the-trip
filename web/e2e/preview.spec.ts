@@ -42,6 +42,10 @@ test("preview isolates preferences and keeps navigation, assets and API under it
   await expect(
     page.getByText("Version 2.0 · Test environment", { exact: true }),
   ).toBeVisible();
+  await expect(page.locator(".brand-edition")).toHaveText("Signal Core");
+  expect(
+    (await page.locator(".site-shell").boundingBox())?.width,
+  ).toBeLessThanOrEqual(520);
   await expect(
     page.getByRole("region", { name: "Favorite setup" }),
   ).toBeVisible();

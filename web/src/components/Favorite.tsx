@@ -1,8 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import { Star } from "lucide-react";
+import { Check, HelpCircle, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 import { type Bathroom, bathroomKey, isRecent } from "../domain/bathroom";
 import { getReport } from "../services/reports";
+import { BathroomIcon } from "./BathroomIcon";
 export function FavoriteButton({
   bathroom,
   favorite,
@@ -26,7 +27,9 @@ export function FavoriteButton({
         fill={saved ? "currentColor" : "none"}
         aria-hidden="true"
       />
-      {saved ? "Saved" : "Favorite"}
+      <span className="favorite-button-text">
+        {saved ? "Saved" : "Favorite"}
+      </span>
     </button>
   );
 }
@@ -43,20 +46,21 @@ export function FavoriteSummary({
 }) {
   if (!favorite)
     return (
-      <section className="favorite-summary" aria-label="Favorite setup">
+      <section
+        className="favorite-summary favorite-empty"
+        aria-label="Favorite setup"
+      >
         <div>
-          <Star size={18} aria-hidden="true" />
-          <strong>Choose your favorite bathroom</strong>
+          <div className="favorite-heading">
+            <Star size={16} aria-hidden="true" />
+            <strong>Choose your favorite bathroom</strong>
+          </div>
           <p>
-            Save a bathroom using its Favorite button. Its live status will
-            appear here whenever you open the app, making your next check
-            easier.
+            Save a bathroom in Consult. Its live status will appear here
+            whenever you open the app.
           </p>
           {!onChooseFavorite && (
-            <p>
-              First choose your device below, then find your bathroom in
-              Consult.
-            </p>
+            <p>Choose your device below, then tap Favorite in Consult.</p>
           )}
         </div>
         {onChooseFavorite && (
@@ -70,9 +74,12 @@ export function FavoriteSummary({
     );
   return (
     <section className="favorite-summary" aria-label="Your favorite">
-      <div>
-        <Star size={18} aria-hidden="true" />
+      <div className="favorite-heading">
+        <Star size={16} aria-hidden="true" />
         <strong>Your favorite</strong>
+      </div>
+      <div className="favorite-location">
+        <BathroomIcon category={favorite.category} />
         <p>
           {favorite.building} · Floor {favorite.floor} · {favorite.category}
         </p>
@@ -107,10 +114,14 @@ function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
     refetchOnReconnect: true,
   });
   if (query.isPending)
-    return <p role="status">Loading your favorite status…</p>;
+    return (
+      <p className="favorite-feedback" role="status">
+        Loading your favorite status…
+      </p>
+    );
   if (query.isError)
     return (
-      <div role="alert">
+      <div className="favorite-feedback status-error" role="alert">
         <p>Couldn't load your favorite status.</p>
         <button type="button" onClick={() => void query.refetch()}>
           Try again
@@ -124,16 +135,29 @@ function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
       : "unavailable"
     : "unknown";
   return (
-    <div className={`favorite-live-status ${state}`} role="status">
-      <strong>
-        {state === "available"
-          ? "Available"
-          : state === "unavailable"
-            ? "Unavailable"
-            : "No recent information"}
-      </strong>
+    <div className="favorite-live-status" role="status">
+      <div className={`status-bar favorite-status ${state}`}>
+        {state === "available" ? (
+          <Check size={18} aria-hidden="true" />
+        ) : state === "unavailable" ? (
+          <img
+            src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
+            alt=""
+            aria-hidden="true"
+          />
+        ) : (
+          <HelpCircle size={18} aria-hidden="true" />
+        )}
+        <strong>
+          {state === "available"
+            ? "Available"
+            : state === "unavailable"
+              ? "Unavailable"
+              : "No recent information"}
+        </strong>
+      </div>
       {recent && query.data && (
-        <p>
+        <p className="report-time">
           Reported at{" "}
           <time dateTime={new Date(query.data.reportedAt).toISOString()}>
             {new Date(query.data.reportedAt).toLocaleTimeString([], {
@@ -143,7 +167,7 @@ function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
           </time>
         </p>
       )}
-      {!recent && <p>Waiting for a recent report.</p>}
+      {!recent && <p className="report-time">Waiting for a recent report.</p>}
     </div>
   );
 }

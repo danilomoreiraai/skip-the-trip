@@ -17,6 +17,7 @@ import {
   useLocation,
   useSearchParams,
 } from "react-router-dom";
+import { BathroomIcon } from "./components/BathroomIcon";
 import { FavoriteButton, FavoriteSummary } from "./components/Favorite";
 import { StatusPanel } from "./components/StatusPanel";
 import { AppSkeleton, Button, Selector, Spinner, Toast } from "./components/ui";
@@ -137,23 +138,6 @@ function ModalDialog({
     >
       {children}
     </dialog>
-  );
-}
-const categoryIcons: Record<Bathroom["category"], string> = {
-  Female: `${import.meta.env.BASE_URL}assets/bathroom-female.png`,
-  Male: `${import.meta.env.BASE_URL}assets/bathroom-male.png`,
-  Accessible: `${import.meta.env.BASE_URL}assets/bathroom-accessible.png`,
-};
-function CategoryIcon({ category }: { category: Bathroom["category"] }) {
-  return (
-    <img
-      className="bathroom-icon"
-      src={categoryIcons[category]}
-      alt=""
-      aria-hidden="true"
-      width={48}
-      height={48}
-    />
   );
 }
 function Home({
@@ -414,7 +398,7 @@ function Home({
           value={selection.category}
           disabled={!selection.floor || mutation.isPending}
           onChange={(category) => changeSelection({ ...selection, category })}
-          renderIcon={(category) => <CategoryIcon category={category} />}
+          renderIcon={(category) => <BathroomIcon category={category} />}
         />
         {bathroom && (
           <FavoriteButton
@@ -739,11 +723,12 @@ export function App() {
               <i />
             </span>
             <span className="brand-name">SKIP THE TRIP</span>
-            <span className="brand-edition">
-              {import.meta.env.BASE_URL === "/"
-                ? "Signal Core"
-                : "Version 2.0 · Test environment"}
-            </span>
+            <span className="brand-edition">Signal Core</span>
+            {import.meta.env.BASE_URL !== "/" && (
+              <span className="test-edition">
+                Version 2.0 · Test environment
+              </span>
+            )}
           </Link>
         </header>
         <Suspense fallback={<AppSkeleton />}>
