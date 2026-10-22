@@ -1,8 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { Check, HelpCircle, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { BathroomIcon } from "../components/BathroomIcon";
 import { FavoriteButton } from "../components/Favorite";
-import { type Bathroom, bathroomKey, floors } from "../domain/bathroom";
+import { Selector } from "../components/ui";
+import {
+  type Bathroom,
+  bathroomKey,
+  buildings,
+  floors,
+  isBuildingAvailable,
+} from "../domain/bathroom";
 import { getBuildingStatus } from "../services/building";
 export function Overview({
   favorite,
@@ -13,8 +21,9 @@ export function Overview({
   onFavoriteChange: (value: Bathroom | null) => void;
   onContribute?: (bathroom: Bathroom) => void;
 }) {
+  const [building, setBuilding] = useState<Bathroom["building"]>("HH5");
   const query = useQuery({
-    queryKey: ["building", "HH5"],
+    queryKey: ["building", building],
     queryFn: getBuildingStatus,
     retry: false,
     refetchInterval: 5_000,
@@ -25,14 +34,23 @@ export function Overview({
   return (
     <main className="overview-layout">
       <section className="overview-intro product-intro">
-        <span className="eyebrow">Live building utility</span>
-        <h1>HH5 overview</h1>
+        <h1>{building} overview</h1>
         <p>
           {onContribute
-            ? "Check each floor. Location is only needed when you contribute."
-            : "Check live status on each floor. No location access needed."}
+            ? "Tap a bathroom to contribute."
+            : "Live status by floor."}
         </p>
       </section>
+      <Selector
+        label="Select building"
+        options={buildings}
+        value={building}
+        onChange={setBuilding}
+        isOptionDisabled={(value) => !isBuildingAvailable(value)}
+        getOptionHint={(value) =>
+          isBuildingAvailable(value) ? undefined : "Available soon"
+        }
+      />
       <div className="overview-tools">
         <button
           type="button"
@@ -68,45 +86,71 @@ export function Overview({
             <div className="overview-grid">
               {query.data.bathrooms
                 .filter((b) => b.floor === floor)
-                .map((bathroom) => (
-                  <article
-                    id={`bathroom-${bathroomKey(bathroom)}`}
-                    tabIndex={-1}
-                    className={`overview-bathroom ${bathroom.available === null ? "unknown" : bathroom.available ? "available" : "unavailable"}`}
-                    key={bathroom.category}
-                  >
-                    <BathroomIcon category={bathroom.category} />
-                    <h3>{bathroom.category}</h3>
-                    <p className="overview-state">
-                      {bathroom.available === null
-                        ? "No recent information"
-                        : bathroom.available
-                          ? "Available"
-                          : "Unavailable"}
-                    </p>
-                    <p className="report-time">
-                      {bathroom.reportedAt
-                        ? `Reported at ${new Date(bathroom.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
-                        : "No reports yet"}
-                    </p>
-                    <div className="overview-actions">
-                      <FavoriteButton
-                        bathroom={bathroom}
-                        favorite={favorite}
-                        onChange={onFavoriteChange}
-                      />
-                      {onContribute && (
+                .map((bathroom) => {
+                  const state =
+                    bathroom.available === null
+                      ? "unknown"
+                      : bathroom.available
+                        ? "available"
+                        : "unavailable";
+                  const status =
+                    state === "unknown"
+                      ? "No recent information"
+                      : state === "available"
+                        ? "Available"
+                        : "Unavailable";
+                  return (
+                    <article
+                      id={`bathroom-${bathroomKey(bathroom)}`}
+                      tabIndex={-1}
+                      className={`overview-bathroom ${state}`}
+                      key={bathroom.category}
+                      aria-label={`${building} floor ${floor} ${bathroom.category}`}
+                    >
+                      <h3 className="sr-only">{bathroom.category}</h3>
+                      {onContribute ? (
                         <button
                           type="button"
-                          aria-label={`Vote: HH5 floor ${floor} ${bathroom.category}`}
+                          className="overview-open"
+                          aria-label={`Vote: ${building} floor ${floor} ${bathroom.category}`}
+                          title={`Vote: ${bathroom.category}`}
                           onClick={() => onContribute(bathroom)}
                         >
-                          Vote <span aria-hidden="true">→</span>
+                          <BathroomIcon category={bathroom.category} />
                         </button>
+                      ) : (
+                        <div className="overview-open">
+                          <BathroomIcon category={bathroom.category} />
+                        </div>
                       )}
-                    </div>
-                  </article>
-                ))}
+                      <div className="overview-actions">
+                        <FavoriteButton
+                          bathroom={bathroom}
+                          favorite={favorite}
+                          onChange={onFavoriteChange}
+                        />
+                        <span
+                          className="overview-indicator"
+                          role="status"
+                          title={status}
+                        >
+                          {state === "available" ? (
+                            <Check size={18} aria-hidden="true" />
+                          ) : state === "unavailable" ? (
+                            <img
+                              src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
+                              alt=""
+                              aria-hidden="true"
+                            />
+                          ) : (
+                            <HelpCircle size={18} aria-hidden="true" />
+                          )}
+                          <span className="sr-only">{status}</span>
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
             </div>
           </section>
         ))}

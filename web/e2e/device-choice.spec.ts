@@ -176,7 +176,10 @@ test("manual mobile choice permits voting but still requires location confirmati
   await page
     .getByRole("button", { name: "Mobile device", exact: true })
     .click();
-  await page.getByRole("button", { name: "HH5", exact: true }).click();
+  await page
+    .locator(".home-layout")
+    .getByRole("button", { name: "HH5", exact: true })
+    .click();
   await page.getByRole("button", { name: "1", exact: true }).click();
   await page.getByRole("button", { name: "Female", exact: true }).click();
   await page
@@ -287,8 +290,16 @@ for (const pendingStep of ["geolocation", "verification"] as const) {
       .click();
     await page.getByRole("button", { name: "Consult", exact: true }).click();
     await page.getByRole("link", { name: "HH5 building page" }).click();
+    await expect(page).toHaveURL(/\/HH5$/);
+    await expect(
+      page.getByRole("heading", { name: "Mobile device", exact: true }),
+    ).toBeFocused();
     await page.getByRole("button", { name: "Contribute", exact: true }).click();
-    await page.getByRole("button", { name: "HH5", exact: true }).click();
+    await expect(page).toHaveURL(/\/HH5\?view=contribute$/);
+    await page
+      .locator(".home-layout")
+      .getByRole("button", { name: "HH5", exact: true })
+      .click();
     await page.getByRole("button", { name: "1", exact: true }).click();
     await page.getByRole("button", { name: "Female", exact: true }).click();
     await page
@@ -306,6 +317,7 @@ for (const pendingStep of ["geolocation", "verification"] as const) {
     if (pendingStep === "verification")
       await expect.poll(() => Boolean(finishVerification)).toBe(true);
     await page.goBack();
+    await expect(page).toHaveURL(/\/\?view=overview$/);
     await page
       .getByRole("button", { name: "Change device", exact: true })
       .click();

@@ -42,7 +42,7 @@ test.beforeEach(async ({ context }) => {
 });
 test("direct HH5 route groups bathrooms, persists an explicit favorite and removes it", async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto("/HH5");
   await expect(
     page.getByRole("heading", { name: "HH5 overview" }),
@@ -51,6 +51,32 @@ test("direct HH5 route groups bathrooms, persists an explicit favorite and remov
     page.getByRole("heading", { name: "Ground floor", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".overview-bathroom")).toHaveCount(12);
+  const buildings = page.getByRole("group", {
+    name: "Select building",
+    exact: true,
+  });
+  await expect(buildings.getByRole("button")).toHaveCount(5);
+  await expect(
+    buildings.getByRole("button", { name: "HH5", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  for (const name of ["HH1", "HH2", "HH3", "HH4"]) {
+    await expect(
+      buildings.getByRole("button", {
+        name: `${name} Available soon`,
+        exact: true,
+      }),
+    ).toBeDisabled();
+  }
+  await expect(
+    page.locator(".overview-bathroom p,.overview-bathroom time"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".overview-bathroom .favorite-button-text").first(),
+  ).toBeHidden();
+  await page.screenshot({
+    path: testInfo.outputPath("consult-compact.png"),
+    fullPage: true,
+  });
   await page
     .getByRole("button", {
       name: "Save favorite: HH5 floor 1 Female",
