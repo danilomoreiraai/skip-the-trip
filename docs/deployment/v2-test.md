@@ -42,3 +42,13 @@ pinned pre-HH5 baseline (`63ccc44783ae4ebc77a736ef2a0c1ea564a8fafb`). Never merg
 this branch into the current beta or change the beta service source to it.
 Rollback a preview by setting its source ref and `APP_REVISION` to the previous
 preview SHA, then deploying only `skip-the-trip-v2`. The root beta is independent.
+
+## Temporary owner test location
+
+Issue #76 adds private provider variables `V2_LOCATION_LATITUDE` and
+`V2_LOCATION_LONGITUDE` (decimal degrees). With no override, the preview uses
+the default HH5 center. Overrides apply only to the preview API. The radius
+remains 500 m, maximum accepted accuracy remains 100 m, and cooldown remains
+unchanged. Keep precise owner-supplied test coordinates in the private provider
+environment; do not commit them. Remove these two provider variables and
+redeploy the preview to restore its default HH5 center before wider testing.
