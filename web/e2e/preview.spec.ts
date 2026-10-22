@@ -88,15 +88,17 @@ test("preview isolates preferences and keeps navigation, assets and API under it
     .getByRole("button", { name: "Open favorite", exact: true })
     .click();
   await expect(page.locator(".bathroom-icon").first()).toBeVisible();
-  expect(
-    await page
-      .locator(".bathroom-icon")
-      .first()
-      .evaluate(
-        (element: HTMLImageElement) =>
-          element.complete && element.naturalWidth > 0,
-      ),
-  ).toBe(true);
+  await expect
+    .poll(() =>
+      page
+        .locator(".bathroom-icon")
+        .first()
+        .evaluate(
+          (element: HTMLImageElement) =>
+            element.complete && element.naturalWidth > 0,
+        ),
+    )
+    .toBe(true);
   expect(
     await page.evaluate(
       () =>
