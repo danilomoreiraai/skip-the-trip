@@ -25,7 +25,7 @@ test("startup explains how to save a favorite without requesting status", async 
 test("saved favorite shows live status before device choice and handles refresh errors", async ({
   context,
   page,
-}) => {
+}, testInfo) => {
   await context.addInitScript(
     (value) =>
       localStorage.setItem("skip-the-trip:favorite:v1", JSON.stringify(value)),
@@ -59,10 +59,39 @@ test("saved favorite shows live status before device choice and handles refresh 
   const card = page.getByRole("region", { name: "Your favorite" });
   await expect(card).toContainText("Available");
   await expect(
+    card.locator(".favorite-location > span[aria-hidden]"),
+  ).toHaveText("HH5 F1");
+  await expect(card.locator("h1,h2,h3,p,time")).toHaveCount(0);
+  await expect(card.locator(".favorite-status")).toHaveClass(/available/);
+  for (const width of [320, 375, 1440]) {
+    await page.setViewportSize({ width, height: 812 });
+    const box = await card.boundingBox();
+    expect(box?.height).toBeLessThanOrEqual(60);
+    const parts = await card.locator(":scope > *").all();
+    for (const part of parts) {
+      const partBox = await part.boundingBox();
+      expect(
+        Math.abs((partBox?.y ?? 0) - ((box?.y ?? 0) + 6)),
+      ).toBeLessThanOrEqual(1);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`favorite-available-${width}.png`),
+    });
+  }
+  await expect(
     page.getByRole("heading", { name: "How are you joining?" }),
   ).toBeVisible();
   available = false;
   await expect(card).toContainText("Unavailable", { timeout: 10000 });
+  await expect(card.locator(".favorite-status.unavailable img")).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath("favorite-unavailable.png"),
+  });
   expired = true;
   await expect(card).toContainText("No recent information", { timeout: 10000 });
   failed = true;

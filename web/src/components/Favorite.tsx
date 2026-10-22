@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, HelpCircle, Star } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, HelpCircle, LoaderCircle, RefreshCw, Star } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 import { type Bathroom, bathroomKey, isRecent } from "../domain/bathroom";
 import { getReport } from "../services/reports";
 import { BathroomIcon } from "./BathroomIcon";
@@ -44,6 +44,7 @@ export function FavoriteSummary({
   onOpen?: () => void;
   onChooseFavorite?: () => void;
 }) {
+  const locationId = useId();
   if (!favorite)
     return (
       <section
@@ -72,29 +73,51 @@ export function FavoriteSummary({
         )}
       </section>
     );
+  const location = (
+    <>
+      <BathroomIcon category={favorite.category} />
+      <span aria-hidden="true">
+        {favorite.building} F{favorite.floor}
+      </span>
+      <span id={locationId} className="sr-only">
+        {favorite.building} · Floor {favorite.floor} · {favorite.category}
+      </span>
+    </>
+  );
   return (
-    <section className="favorite-summary" aria-label="Your favorite">
-      <div className="favorite-heading">
-        <Star size={16} aria-hidden="true" />
-        <strong>Your favorite</strong>
-      </div>
-      <div className="favorite-location">
-        <BathroomIcon category={favorite.category} />
-        <p>
-          {favorite.building} · Floor {favorite.floor} · {favorite.category}
-        </p>
-      </div>
-      <FavoriteLiveStatus key={bathroomKey(favorite)} bathroom={favorite} />
-      <div className="favorite-actions">
-        {onOpen && (
-          <button type="button" onClick={onOpen}>
-            Open favorite
-          </button>
-        )}
-        <button type="button" onClick={() => onChange(null)}>
-          Remove favorite
+    <section
+      className="favorite-summary favorite-strip"
+      aria-label="Your favorite"
+    >
+      <button
+        type="button"
+        className="favorite-remove"
+        aria-label="Remove favorite"
+        title="Remove favorite"
+        onClick={() => onChange(null)}
+      >
+        <Star size={18} fill="currentColor" aria-hidden="true" />
+      </button>
+      {onOpen ? (
+        <button
+          type="button"
+          className="favorite-location"
+          aria-label="Open favorite"
+          aria-describedby={locationId}
+          title={`${favorite.building} · Floor ${favorite.floor} · ${favorite.category}`}
+          onClick={onOpen}
+        >
+          {location}
         </button>
-      </div>
+      ) : (
+        <div
+          className="favorite-location"
+          title={`${favorite.building} · Floor ${favorite.floor} · ${favorite.category}`}
+        >
+          {location}
+        </div>
+      )}
+      <FavoriteLiveStatus key={bathroomKey(favorite)} bathroom={favorite} />
     </section>
   );
 }
@@ -115,16 +138,27 @@ function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
   });
   if (query.isPending)
     return (
-      <p className="favorite-feedback" role="status">
-        Loading your favorite status…
-      </p>
+      <div
+        className="favorite-status unknown"
+        role="status"
+        title="Loading your favorite status…"
+      >
+        <LoaderCircle size={18} aria-hidden="true" />
+        <span className="sr-only">Loading your favorite status…</span>
+      </div>
     );
   if (query.isError)
     return (
-      <div className="favorite-feedback status-error" role="alert">
-        <p>Couldn't load your favorite status.</p>
-        <button type="button" onClick={() => void query.refetch()}>
-          Try again
+      <div className="favorite-error" role="alert">
+        <span className="sr-only">Couldn't load your favorite status.</span>
+        <button
+          type="button"
+          className="favorite-status unknown"
+          aria-label="Try again"
+          title="Couldn't load your favorite status. Try again"
+          onClick={() => void query.refetch()}
+        >
+          <RefreshCw size={18} aria-hidden="true" />
         </button>
       </div>
     );
@@ -134,40 +168,26 @@ function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
       ? "available"
       : "unavailable"
     : "unknown";
+  const label =
+    state === "available"
+      ? "Available"
+      : state === "unavailable"
+        ? "Unavailable"
+        : "No recent information";
   return (
-    <div className="favorite-live-status" role="status">
-      <div className={`status-bar favorite-status ${state}`}>
-        {state === "available" ? (
-          <Check size={18} aria-hidden="true" />
-        ) : state === "unavailable" ? (
-          <img
-            src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
-            alt=""
-            aria-hidden="true"
-          />
-        ) : (
-          <HelpCircle size={18} aria-hidden="true" />
-        )}
-        <strong>
-          {state === "available"
-            ? "Available"
-            : state === "unavailable"
-              ? "Unavailable"
-              : "No recent information"}
-        </strong>
-      </div>
-      {recent && query.data && (
-        <p className="report-time">
-          Reported at{" "}
-          <time dateTime={new Date(query.data.reportedAt).toISOString()}>
-            {new Date(query.data.reportedAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </time>
-        </p>
+    <div className={`favorite-status ${state}`} role="status" title={label}>
+      {state === "available" ? (
+        <Check size={20} aria-hidden="true" />
+      ) : state === "unavailable" ? (
+        <img
+          src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
+          alt=""
+          aria-hidden="true"
+        />
+      ) : (
+        <HelpCircle size={20} aria-hidden="true" />
       )}
-      {!recent && <p className="report-time">Waiting for a recent report.</p>}
+      <span className="sr-only">{label}</span>
     </div>
   );
 }
