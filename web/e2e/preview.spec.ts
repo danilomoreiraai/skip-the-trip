@@ -88,6 +88,10 @@ test("preview isolates preferences and keeps navigation, assets and API under it
   await page
     .getByRole("button", { name: "Mobile device", exact: true })
     .click();
+  await expect(
+    page.getByRole("button", { name: "Contribute", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(page).toHaveURL(/view=contribute/);
   await page
     .getByRole("button", { name: "Open favorite", exact: true })
     .click();

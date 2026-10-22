@@ -64,16 +64,8 @@ test("requires a manual choice before loading status even with a contribution li
   const mac = page.getByRole("button", { name: "Mac", exact: true });
   await expect(mobile).toBeVisible();
   await expect(mac).toBeVisible();
-  await expect(
-    page.getByText(
-      "Consult status and vote. Confirm your location when you vote.",
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Consult live status. To vote, open Skip the Trip on your mobile device.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByText("Consult & vote")).toBeVisible();
+  await expect(page.getByText("Consult only")).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "How are you joining?" }),
   ).toBeFocused();
@@ -293,6 +285,7 @@ for (const pendingStep of ["geolocation", "verification"] as const) {
     await page
       .getByRole("button", { name: "Mobile device", exact: true })
       .click();
+    await page.getByRole("button", { name: "Consult", exact: true }).click();
     await page.getByRole("link", { name: "HH5 building page" }).click();
     await page.getByRole("button", { name: "Contribute", exact: true }).click();
     await page.getByRole("button", { name: "HH5", exact: true }).click();
@@ -338,5 +331,39 @@ for (const pendingStep of ["geolocation", "verification"] as const) {
     await expect(
       page.getByRole("button", { name: /Contribute|Vote:/ }),
     ).toHaveCount(0);
+  });
+}
+
+for (const entry of ["/", "/?view=overview", "/HH5?view=overview"]) {
+  test(`mobile choice always enters Contribute from ${entry} and after changing device`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("skip-the-trip:view:v1", "overview"),
+    );
+    await page.goto(entry);
+    await page
+      .getByRole("button", { name: "Mobile device", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Contribute", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("button", { name: "Yes, available", exact: true }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/view=contribute/);
+    await page.getByRole("button", { name: "Consult", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Change device", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Mobile device", exact: true })
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Contribute", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      page.getByRole("button", { name: "Yes, available", exact: true }),
+    ).toBeVisible();
   });
 }

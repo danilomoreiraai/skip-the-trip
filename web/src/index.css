@@ -122,14 +122,18 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 .favorite-status img { width:18px;height:18px; }
 .favorite-feedback { margin:0;font-size:11px;text-align:center; }
 .device-choice { padding:0; }
+.device-intro { margin-bottom:20px;text-align:center; }
+.device-intro h1 { margin:0;font-size:22px;line-height:1.2;font-weight:700;letter-spacing:-.04em; }
+.device-note,.device-favorite-hint { margin:14px 0 0;text-align:center;font-size:11px;line-height:1.5;color:var(--muted); }
+.device-favorite-hint { margin-top:22px; }
+.device-choice > .favorite-summary { margin-top:22px; }
 .device-choice h1:focus,.device-session h2:focus { outline:none; }
 .device-options { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px; }
-.device-option { display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0;min-height:210px;padding:18px 12px;text-align:center; }
+.device-option { display:flex;flex-direction:column;align-items:center;gap:10px;justify-content:center;min-width:0;min-height:148px;padding:18px 12px;text-align:center; }
 .device-option:hover { background:var(--surface); }
 .device-option > svg { flex-shrink:0; }
 .device-title { font-size:10px;font-weight:900;letter-spacing:.08em;text-transform:uppercase; }
 .device-description { font-size:11px;font-weight:400;line-height:1.5;color:var(--muted); }
-.device-action { margin-top:auto;font-size:9px;font-weight:900;letter-spacing:.04em;text-transform:uppercase;color:var(--accent); }
 .device-session { display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px; }
 .device-session > div { min-width:0; }
 .device-session h2 { margin:0;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase; }

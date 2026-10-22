@@ -42,7 +42,17 @@ test("new flows keep the compact app shell and usable controls at every width", 
     }),
   );
   await page.goto("/");
-  await page.screenshot({ path: testInfo.outputPath("device-choice.png") });
+  for (const width of [320, 375, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: testInfo.outputPath(`device-choice-${width}.png`),
+    });
+  }
   await page.getByRole("button", { name: "Mac", exact: true }).click();
   await expect(page.locator(".overview-bathroom")).toHaveCount(12);
   for (const width of [1440, 375, 320]) {
@@ -94,6 +104,7 @@ test("new flows keep the compact app shell and usable controls at every width", 
   await page
     .getByRole("button", { name: "Mobile device", exact: true })
     .click();
+  await page.getByRole("button", { name: "Consult", exact: true }).click();
   await page
     .getByRole("button", { name: "Vote: HH5 floor 1 Female", exact: true })
     .click();

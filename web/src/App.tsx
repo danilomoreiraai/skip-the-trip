@@ -533,6 +533,8 @@ function Home({
 }
 function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
   const [device, setDevice] = useState(loadDevice);
+  const [entryView, setEntryView] = useState<View>();
+  const [, setSearch] = useSearchParams();
   const [favorite, setFavorite] = useState(loadFavorite);
   useEffect(() => {
     const refresh = () =>
@@ -557,12 +559,25 @@ function PublicHome({ buildingRoute = false }: { buildingRoute?: boolean }) {
     setFavorite(normalized);
   };
   const changeDevice = (value: Device | null) => {
+    if (value) {
+      const initialView = value === "mobile" ? "contribute" : "overview";
+      setEntryView(initialView);
+      saveView(initialView);
+      setSearch(
+        (previous) => {
+          previous.set("view", initialView);
+          return previous;
+        },
+        { replace: true },
+      );
+    }
     saveDevice(value);
     setDevice(value);
   };
   return device ? (
     <PublicExperience
       device={device}
+      entryView={entryView}
       favorite={favorite}
       changeFavorite={changeFavorite}
       buildingRoute={buildingRoute}
@@ -580,24 +595,28 @@ function PublicExperience({
   favorite,
   changeFavorite,
   device,
+  entryView,
   buildingRoute,
   onChangeDevice,
 }: {
   favorite: Bathroom | null;
   changeFavorite: (value: Bathroom | null) => void;
   device: Device;
+  entryView?: View;
   buildingRoute: boolean;
   onChangeDevice: () => void;
 }) {
   const canContribute = device === "mobile";
   const [selectionVersion, setSelectionVersion] = useState(0);
   const [search, setSearch] = useSearchParams();
-  const [selectedView, setView] = useState<View>(() =>
-    search.get("view") === "contribute"
-      ? "contribute"
-      : search.get("view") === "overview" || buildingRoute
-        ? "overview"
-        : loadView(),
+  const [selectedView, setView] = useState<View>(
+    () =>
+      entryView ??
+      (search.get("view") === "contribute"
+        ? "contribute"
+        : search.get("view") === "overview" || buildingRoute
+          ? "overview"
+          : loadView()),
   );
   const view = canContribute ? selectedView : "overview";
   const experienceHeading = useRef<HTMLHeadingElement>(null);

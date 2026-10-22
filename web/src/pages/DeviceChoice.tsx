@@ -17,14 +17,11 @@ export function DeviceChoice({
   useEffect(() => heading.current?.focus(), []);
   return (
     <main className="device-choice">
-      <div className="product-intro">
-        <span className="eyebrow">Before you begin</span>
+      <div className="device-intro">
         <h1 ref={heading} tabIndex={-1}>
           How are you joining?
         </h1>
-        <p>Choose your device to get started.</p>
       </div>
-      <FavoriteSummary favorite={favorite} onChange={onFavoriteChange} />
       <div className="device-options">
         <button
           type="button"
@@ -33,15 +30,12 @@ export function DeviceChoice({
           aria-describedby="mobile-device-description"
           onClick={() => onChoose("mobile")}
         >
-          <Smartphone size={48} strokeWidth={1.6} aria-hidden="true" />
+          <Smartphone size={36} strokeWidth={1.6} aria-hidden="true" />
           <span id="mobile-device-title" className="device-title">
             Mobile device
           </span>
           <span id="mobile-device-description" className="device-description">
-            Consult status and vote. Confirm your location when you vote.
-          </span>
-          <span className="device-action" aria-hidden="true">
-            Consult & vote →
+            Consult & vote
           </span>
         </button>
         <button
@@ -51,19 +45,26 @@ export function DeviceChoice({
           aria-describedby="mac-device-description"
           onClick={() => onChoose("mac")}
         >
-          <Laptop size={48} strokeWidth={1.6} aria-hidden="true" />
+          <Laptop size={36} strokeWidth={1.6} aria-hidden="true" />
           <span id="mac-device-title" className="device-title">
             Mac
           </span>
           <span id="mac-device-description" className="device-description">
-            Consult live status. To vote, open Skip the Trip on your mobile
-            device.
-          </span>
-          <span className="device-action" aria-hidden="true">
-            Consult status →
+            Consult only
           </span>
         </button>
       </div>
+      <p className="device-note">
+        Voting on mobile requires location confirmation.
+      </p>
+      {favorite ? (
+        <FavoriteSummary favorite={favorite} onChange={onFavoriteChange} />
+      ) : (
+        <section className="device-favorite-hint" aria-label="Favorite setup">
+          Save a favorite in Consult. Its status will appear here whenever you
+          open the app.
+        </section>
+      )}
     </main>
   );
 }
