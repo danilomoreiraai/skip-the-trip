@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Check, HelpCircle, LoaderCircle, RefreshCw, Star } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { type Bathroom, bathroomKey, isRecent } from "../domain/bathroom";
 import { getReport } from "../services/reports";
 import { BathroomIcon } from "./BathroomIcon";
@@ -85,10 +85,7 @@ export function FavoriteSummary({
     </>
   );
   return (
-    <section
-      className="favorite-summary favorite-strip"
-      aria-label="Your favorite"
-    >
+    <FavoriteLiveStatus key={bathroomKey(favorite)} bathroom={favorite}>
       <button
         type="button"
         className="favorite-remove"
@@ -117,12 +114,17 @@ export function FavoriteSummary({
           {location}
         </div>
       )}
-      <FavoriteLiveStatus key={bathroomKey(favorite)} bathroom={favorite} />
-    </section>
+    </FavoriteLiveStatus>
   );
 }
 
-function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
+function FavoriteLiveStatus({
+  bathroom,
+  children,
+}: {
+  bathroom: Bathroom;
+  children: ReactNode;
+}) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -136,58 +138,77 @@ function FavoriteLiveStatus({ bathroom }: { bathroom: Bathroom }) {
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
-  if (query.isPending)
-    return (
-      <div
-        className="favorite-status unknown"
-        role="status"
-        title="Loading your favorite status…"
-      >
-        <LoaderCircle size={18} aria-hidden="true" />
-        <span className="sr-only">Loading your favorite status…</span>
-      </div>
-    );
-  if (query.isError)
-    return (
-      <div className="favorite-error" role="alert">
-        <span className="sr-only">Couldn't load your favorite status.</span>
-        <button
-          type="button"
-          className="favorite-status unknown"
-          aria-label="Try again"
-          title="Couldn't load your favorite status. Try again"
-          onClick={() => void query.refetch()}
-        >
-          <RefreshCw size={18} aria-hidden="true" />
-        </button>
-      </div>
-    );
-  const recent = isRecent(query.data, now);
+  const recent =
+    !query.isError && !query.isPending && isRecent(query.data, now);
   const state = recent
     ? query.data?.available
       ? "available"
       : "unavailable"
     : "unknown";
-  const label =
-    state === "available"
-      ? "Available"
-      : state === "unavailable"
-        ? "Unavailable"
-        : "No recent information";
+  const label = query.isPending
+    ? "Loading your favorite status…"
+    : query.isError
+      ? "Couldn't load your favorite status."
+      : state === "available"
+        ? "Available"
+        : state === "unavailable"
+          ? "Unavailable"
+          : "No recent information";
   return (
-    <div className={`favorite-status ${state}`} role="status" title={label}>
-      {state === "available" ? (
-        <Check size={20} aria-hidden="true" />
-      ) : state === "unavailable" ? (
-        <img
-          src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
-          alt=""
-          aria-hidden="true"
-        />
-      ) : (
-        <HelpCircle size={20} aria-hidden="true" />
-      )}
-      <span className="sr-only">{label}</span>
-    </div>
+    <section className="favorite-saved" aria-label="Your favorite">
+      <div className={`favorite-summary favorite-strip ${state}`}>
+        {children}
+        {query.isError ? (
+          <div className="favorite-error" role="alert">
+            <span className="sr-only">{label}</span>
+            <button
+              type="button"
+              className="favorite-status"
+              aria-label="Try again"
+              title={`${label} Try again`}
+              onClick={() => void query.refetch()}
+            >
+              <RefreshCw size={18} aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          <div className="favorite-status" role="status" title={label}>
+            {query.isPending ? (
+              <LoaderCircle size={18} aria-hidden="true" />
+            ) : state === "available" ? (
+              <Check size={20} aria-hidden="true" />
+            ) : state === "unavailable" ? (
+              <img
+                src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
+                alt=""
+                aria-hidden="true"
+              />
+            ) : (
+              <HelpCircle size={20} aria-hidden="true" />
+            )}
+            <span className="sr-only">{label}</span>
+          </div>
+        )}
+      </div>
+      <p className="report-time favorite-updated">
+        {query.isPending ? (
+          "Updating…"
+        ) : query.isError ? (
+          "Couldn't update status."
+        ) : query.data?.reportedAt ? (
+          <>
+            Reported at{" "}
+            <time dateTime={new Date(query.data.reportedAt).toISOString()}>
+              {new Date(query.data.reportedAt).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </time>
+          </>
+        ) : (
+          "No recent information"
+        )}
+      </p>
+    </section>
   );
 }

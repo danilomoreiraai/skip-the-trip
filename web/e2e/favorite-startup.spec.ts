@@ -61,13 +61,28 @@ test("saved favorite shows live status before device choice and handles refresh 
   await expect(
     card.locator(".favorite-location > span[aria-hidden]"),
   ).toHaveText("HH5 F1");
-  await expect(card.locator("h1,h2,h3,p,time")).toHaveCount(0);
-  await expect(card.locator(".favorite-status")).toHaveClass(/available/);
+  await expect(
+    card.locator(
+      ".favorite-strip h1,.favorite-strip h2,.favorite-strip h3,.favorite-strip p,.favorite-strip time",
+    ),
+  ).toHaveCount(0);
+  await expect(card.locator(".favorite-strip")).toHaveClass(/available/);
   for (const width of [320, 375, 1440]) {
     await page.setViewportSize({ width, height: 812 });
-    const box = await card.boundingBox();
+    const strip = card.locator(".favorite-strip");
+    const box = await strip.boundingBox();
     expect(box?.height).toBeLessThanOrEqual(60);
-    const parts = await card.locator(":scope > *").all();
+    await expect(strip).toHaveCSS("background-color", "rgb(0, 166, 107)");
+    await expect(card.locator(".favorite-status")).toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)",
+    );
+    const timestamp = card.locator(".favorite-updated time");
+    await expect(timestamp).toBeVisible();
+    expect((await timestamp.boundingBox())?.y).toBeGreaterThanOrEqual(
+      (box?.y ?? 0) + (box?.height ?? 0),
+    );
+    const parts = await strip.locator(":scope > *").all();
     for (const part of parts) {
       const partBox = await part.boundingBox();
       expect(
@@ -88,7 +103,13 @@ test("saved favorite shows live status before device choice and handles refresh 
   ).toBeVisible();
   available = false;
   await expect(card).toContainText("Unavailable", { timeout: 10000 });
-  await expect(card.locator(".favorite-status.unavailable img")).toBeVisible();
+  await expect(
+    card.locator(".favorite-strip.unavailable .favorite-status img"),
+  ).toBeVisible();
+  await expect(card.locator(".favorite-strip")).toHaveCSS(
+    "background-color",
+    "rgb(255, 86, 45)",
+  );
   await page.screenshot({
     path: testInfo.outputPath("favorite-unavailable.png"),
   });
