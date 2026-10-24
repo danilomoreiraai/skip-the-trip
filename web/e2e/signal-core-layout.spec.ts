@@ -67,8 +67,35 @@ test("new flows keep the compact app shell and usable controls at every width", 
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
     ).toBe(true);
+    for (const card of await page.locator(".overview-bathroom").all()) {
+      const box = await card.boundingBox();
+      const icon = await card.locator(".bathroom-icon").boundingBox();
+      const star = await card.locator(".favorite-button svg").boundingBox();
+      const status = await card
+        .locator(".overview-indicator > svg")
+        .boundingBox();
+      if (!box || !icon || !star || !status)
+        throw new Error("Missing card geometry");
+      const center = box.x + box.width / 2;
+      expect(Math.abs(icon.x + icon.width / 2 - center)).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(
+          (star.x + star.width / 2 + status.x + status.width / 2) / 2 - center,
+        ),
+      ).toBeLessThanOrEqual(1);
+      expect(
+        Math.abs(star.y + star.height / 2 - status.y - status.height / 2),
+      ).toBeLessThanOrEqual(1);
+    }
+    await expect(page.locator(".overview-floor-code")).toHaveText([
+      "GF",
+      "F1",
+      "F2",
+      "F3",
+    ]);
     await page.screenshot({
       path: testInfo.outputPath(`overview-${width}.png`),
+      fullPage: true,
     });
     for (const button of await page
       .locator(".overview-bathroom button")

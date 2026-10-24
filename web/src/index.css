@@ -88,19 +88,20 @@ button:focus-visible,a:focus-visible { outline:3px solid var(--focus); outline-o
 .overview-layout { width:100%;min-width:0; }
 .overview-tools { display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 24px; }
 .overview-tools .report-time { margin:0;text-align:right; }
-.overview-floor { margin:0 0 24px; }
+.overview-floor { margin:0 0 24px;padding-top:12px;border-top:2px solid var(--line); }
 .overview-floor:last-child { margin-bottom:0; }
-.overview-floor h2 { margin:0 0 10px;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.15em;text-transform:uppercase; }
+.overview-floor h2 { display:flex;align-items:center;gap:10px;margin:0 0 12px;color:var(--ink);font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase; }
+.overview-floor-code { display:inline-flex;align-items:center;justify-content:center;min-width:36px;height:28px;border-radius:3px;background:var(--accent);color:#fff;font-size:10px;letter-spacing:.04em; }
 .overview-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px; }
 .overview-bathroom { min-width:0;padding:6px;border:var(--border) solid var(--line);border-radius:var(--radius-control);background:color-mix(in srgb,var(--muted) 12%,var(--surface));text-align:center; }
 .overview-bathroom.available { background:var(--positive); }
 .overview-bathroom.unavailable { background:var(--negative); }
 .overview-open { display:flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:4px;border:0;border-radius:3px;background:transparent;color:var(--ink); }
 .overview-bathroom .bathroom-icon { width:36px;height:36px; }
-.overview-actions { display:flex;align-items:center;justify-content:space-between;gap:2px;margin-top:4px; }
+.overview-actions { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;justify-items:center;gap:0;margin-top:4px; }
 .overview-actions .favorite-button { width:44px;min-width:44px;min-height:44px;padding:0;border:0;background:transparent;color:var(--ink);box-shadow:none; }
 .overview-actions .favorite-button-text { display:none; }
-.overview-indicator { display:flex;align-items:center;justify-content:center;width:18px;height:18px;flex-shrink:0; }
+.overview-indicator { display:flex;align-items:center;justify-content:center;width:44px;height:44px; }
 .overview-indicator img { width:18px;height:18px; }
 .overview-warning { padding:12px;border:var(--border) solid var(--negative);border-radius:var(--radius-control);font-size:11px;line-height:1.5; }
 .overview-bathroom:focus { outline:3px solid var(--focus);outline-offset:4px; }

@@ -81,6 +81,9 @@ export function Overview({
             aria-labelledby={`floor-${floor}`}
           >
             <h2 id={`floor-${floor}`}>
+              <span className="overview-floor-code" aria-hidden="true">
+                {floor === "G" ? "GF" : `F${floor}`}
+              </span>
               {floor === "G" ? "Ground floor" : `Floor ${floor}`}
             </h2>
             <div className="overview-grid">
