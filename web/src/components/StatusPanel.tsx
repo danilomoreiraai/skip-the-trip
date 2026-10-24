@@ -2,6 +2,7 @@ import { Check, HelpCircle, RefreshCw } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
 import { type Bathroom, isRecent, type Report } from "../domain/bathroom";
 import { motionTokens, springs } from "../lib/motion";
+import { CleaningNotice } from "./CleaningNotice";
 import { Button, Skeleton } from "./ui";
 export function StatusPanel({
   bathroom,
@@ -30,6 +31,8 @@ export function StatusPanel({
         </Button>
       </div>
     );
+  if (report?.cleaning?.state === "active")
+    return <CleaningNotice cleaning={report.cleaning} />;
   const yes = report?.yesCount ?? 0;
   const no = report?.noCount ?? 0;
   const total = yes + no;
@@ -52,6 +55,7 @@ export function StatusPanel({
         exit={{ opacity: 0, y: reduced ? 0 : -motionTokens.distance.sm }}
         transition={springs.gentle}
       >
+        <CleaningNotice cleaning={report?.cleaning} />
         {bathroom && recent && total > 0 ? (
           <div className="status-bar percentage-bar">
             <meter
@@ -104,7 +108,7 @@ export function StatusPanel({
         )}
         {bathroom && (
           <p className="report-time">
-            {report
+            {report && report.reportedAt > 0
               ? `${recent ? "Reported" : "Last report"} at ${new Date(report.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}${recent ? "" : " · Expired"}`
               : "Be the first to report"}
           </p>

@@ -3,6 +3,10 @@ import {
   hasZodFastifySchemaValidationErrors,
   isResponseSerializationError,
 } from "fastify-type-provider-zod";
+import {
+  CleaningInProgressError,
+  OperationsError,
+} from "../domain/cleaning.js";
 
 type CaptureException = (
   error: unknown,
@@ -17,6 +21,19 @@ export function registerErrorHandler(
     reply.status(404).send({ message: "Not found", statusCode: 404 }),
   );
   app.setErrorHandler((error, request, reply) => {
+    if (error instanceof CleaningInProgressError)
+      return reply.status(409).send({
+        code: error.code,
+        message: error.message,
+        expectedEndAt: error.expectedEndAt.toISOString(),
+        statusCode: 409,
+      });
+    if (error instanceof OperationsError)
+      return reply.status(error.statusCode).send({
+        code: error.code,
+        message: error.message,
+        statusCode: error.statusCode,
+      });
     if (hasZodFastifySchemaValidationErrors(error)) {
       return reply
         .status(400)

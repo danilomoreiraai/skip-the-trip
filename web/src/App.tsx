@@ -49,6 +49,7 @@ import {
   withVoteCooldown,
 } from "./lib/vote-cooldown";
 import { Overview } from "./pages/Overview";
+import { Staff } from "./pages/Staff";
 import {
   loadFavorite,
   loadView,
@@ -57,6 +58,7 @@ import {
   type View,
 } from "./services/preferences";
 import {
+  CleaningInProgressError,
   getReport,
   LocationVerificationError,
   LocationVerificationRequiredError,
@@ -219,7 +221,13 @@ function Home({
     },
     onError: (error, variables) => {
       observability.captureException(error, { operation: "submit-report" });
-      if (error instanceof LocationVerificationRequiredError) {
+      if (error instanceof CleaningInProgressError) {
+        setPendingVote(null);
+        setToast(error.message);
+        void client.invalidateQueries({
+          queryKey: ["report", bathroomKey(variables.location)],
+        });
+      } else if (error instanceof LocationVerificationRequiredError) {
         if (locationJustVerified.current) {
           void reportGeolocationFailure("authorization_cookie_failure");
         }
@@ -419,7 +427,8 @@ function Home({
                 query.isPending ||
                 query.isError ||
                 mutation.isPending ||
-                now < voteCooldownUntil
+                now < voteCooldownUntil ||
+                query.data?.cleaning?.state === "active"
               }
               onClick={(event) => {
                 voteTrigger.current = event.currentTarget;
@@ -449,7 +458,8 @@ function Home({
                 query.isPending ||
                 query.isError ||
                 mutation.isPending ||
-                now < voteCooldownUntil
+                now < voteCooldownUntil ||
+                query.data?.cleaning?.state === "active"
               }
               onClick={(event) => {
                 voteTrigger.current = event.currentTarget;
@@ -667,6 +677,7 @@ export function App() {
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>
               <Route path="/" element={<PublicHome />} />
+              <Route path="/staff" element={<Staff />} />
               <Route path="/HH5" element={<PublicHome buildingRoute />} />
               <Route
                 path="/privacy"

@@ -3,6 +3,7 @@ import { env } from "../env.js";
 import { pruneReports } from "../functions/prune-reports.js";
 import { createRetentionScheduler } from "../lib/retention-scheduler.js";
 import { createLocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import { createOperationsRepository } from "../modules/operations/repository.js";
 import { createReportsRepository } from "../modules/reports/repository.js";
 
 const positiveNumber = (name: string, fallback: number) => {
@@ -48,8 +49,18 @@ async function main() {
     failureThreshold,
     log: (entry) => console.log(JSON.stringify(entry)),
     notify: sendTelegram,
-    run: () =>
-      pruneReports(repository, authorizations, env.REPORT_RETENTION_DAYS),
+    run: async () => {
+      const now = new Date();
+      await createOperationsRepository(db).prune(
+        new Date(now.getTime() - env.REPORT_RETENTION_DAYS * 86_400_000),
+        now,
+      );
+      return pruneReports(
+        repository,
+        authorizations,
+        env.REPORT_RETENTION_DAYS,
+      );
+    },
   });
 
   for (;;) {

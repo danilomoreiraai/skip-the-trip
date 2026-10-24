@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
+import { CleaningNotice } from "../components/CleaningNotice";
 import { FavoriteButton } from "../components/Favorite";
 import { type Bathroom, floors } from "../domain/bathroom";
 import { getBuildingStatus } from "../services/building";
@@ -67,12 +68,26 @@ export function Overview({
                     key={bathroom.category}
                   >
                     <h3>{bathroom.category}</h3>
+                    <CleaningNotice
+                      cleaning={query.data.cleaning.find(
+                        (state) =>
+                          state.floor === bathroom.floor &&
+                          state.category === bathroom.category,
+                      )}
+                    />
                     <p className="overview-state">
-                      {bathroom.available === null
-                        ? "No recent information"
-                        : bathroom.available
-                          ? "Available · community report"
-                          : "Unavailable · community report"}
+                      {query.data.cleaning.some(
+                        (state) =>
+                          state.floor === bathroom.floor &&
+                          state.category === bathroom.category &&
+                          state.state === "active",
+                      )
+                        ? "Contributions paused during cleaning"
+                        : bathroom.available === null
+                          ? "No recent information"
+                          : bathroom.available
+                            ? "Available · community report"
+                            : "Unavailable · community report"}
                     </p>
                     <p className="report-time">
                       {bathroom.reportedAt

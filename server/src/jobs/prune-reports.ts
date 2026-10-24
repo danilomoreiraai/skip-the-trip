@@ -3,9 +3,15 @@ import { env } from "../env.js";
 import { pruneReports } from "../functions/prune-reports.js";
 import { runRetention } from "../lib/retention-scheduler.js";
 import { createLocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import { createOperationsRepository } from "../modules/operations/repository.js";
 import { createReportsRepository } from "../modules/reports/repository.js";
 
 try {
+  const now = new Date();
+  await createOperationsRepository(db).prune(
+    new Date(now.getTime() - env.REPORT_RETENTION_DAYS * 86_400_000),
+    now,
+  );
   const result = await runRetention(() =>
     pruneReports(
       createReportsRepository(db),

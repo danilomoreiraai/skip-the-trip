@@ -10,6 +10,7 @@ import {
 import type { Env } from "./env.js";
 import { privacyLogger } from "./lib/privacy-logging.js";
 import type { LocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
+import type { OperationsRepository } from "./modules/operations/repository.js";
 import type { ReportsRepository } from "./modules/reports/repository.js";
 import { registerTracing } from "./observability/tracing.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
@@ -19,6 +20,7 @@ import {
   registerLocationRoutes,
 } from "./routes/locations.js";
 import { registerReportRoutes } from "./routes/reports.js";
+import { registerStaffRoutes } from "./routes/staff.js";
 
 type AppOptions = {
   config: Pick<
@@ -33,7 +35,9 @@ type AppOptions = {
     | "LOCATION_RADIUS_METERS"
     | "NODE_ENV"
     | "APP_REVISION"
-  >;
+  > &
+    Partial<Pick<Env, "STAFF_ENABLED">>;
+  operationsRepository?: OperationsRepository;
   reportsRepository: ReportsRepository;
   locationAuthorizationsRepository: LocationAuthorizationsRepository;
   captureException?: (
@@ -47,6 +51,7 @@ export async function buildApp({
   reportsRepository,
   locationAuthorizationsRepository,
   captureException,
+  operationsRepository,
 }: AppOptions) {
   const app = Fastify({
     logger: privacyLogger(config.LOG_LEVEL),
@@ -92,7 +97,14 @@ export async function buildApp({
     },
     secureCookie,
   );
-  registerBuildingStatusRoutes(app, reportsRepository);
+  registerBuildingStatusRoutes(app, reportsRepository, operationsRepository);
+  if (config.STAFF_ENABLED && operationsRepository)
+    registerStaffRoutes(
+      app,
+      operationsRepository,
+      config.CORS_ORIGIN.split(",").map((value) => value.trim()),
+      secureCookie,
+    );
   registerReportRoutes(
     app,
     reportsRepository,
@@ -100,6 +112,7 @@ export async function buildApp({
     config.REPORT_WINDOW_MINUTES,
     config.VOTE_COOLDOWN_SECONDS,
     secureCookie,
+    operationsRepository,
   );
   return app;
 }

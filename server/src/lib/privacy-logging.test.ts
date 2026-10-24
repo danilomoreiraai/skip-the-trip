@@ -3,10 +3,41 @@ import Fastify from "fastify";
 import { serializerCompiler } from "fastify-type-provider-zod";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
+import {
+  CleaningInProgressError,
+  OperationsError,
+} from "../domain/cleaning.js";
 import { registerErrorHandler } from "../plugins/error-handler.js";
 import { privacyLogger } from "./privacy-logging.js";
 
 describe("private request diagnostics", () => {
+  it("returns bounded operation errors without treating cleaning as cooldown", async () => {
+    const app = Fastify({ logger: false });
+    registerErrorHandler(app);
+    app.post("/cleaning", async () => {
+      throw new OperationsError("CLEANING_CONFLICT", 409);
+    });
+    app.post("/vote", async () => {
+      throw new CleaningInProgressError(new Date("2026-10-20T10:15:00.000Z"));
+    });
+    app.post("/unauthorized", async () => {
+      throw new OperationsError("STAFF_UNAUTHORIZED", 401);
+    });
+    expect(
+      (await app.inject({ method: "POST", url: "/unauthorized" })).statusCode,
+    ).toBe(401);
+    const conflict = await app.inject({ method: "POST", url: "/cleaning" });
+    expect(conflict.statusCode).toBe(409);
+    expect(conflict.json()).toMatchObject({ code: "CLEANING_CONFLICT" });
+    const cleaning = await app.inject({ method: "POST", url: "/vote" });
+    expect(cleaning.statusCode).toBe(409);
+    expect(cleaning.json()).toMatchObject({
+      code: "CLEANING_IN_PROGRESS",
+      expectedEndAt: "2026-10-20T10:15:00.000Z",
+    });
+    expect(cleaning.json().retryAfterSeconds).toBeUndefined();
+    await app.close();
+  });
   it("keeps sensitive unknown paths and query strings out of not-found logs and responses", async () => {
     const logs: string[] = [];
     const app = Fastify({

@@ -111,6 +111,14 @@ export function Privacy({
         reports. Providers may process data outside the EEA under their
         applicable safeguards.
       </p>
+      <h2>Cleaning team updates</h2>
+      <p>
+        Cleaning updates are attributed publicly to the team. Individual cleaner
+        access is restricted, revocable and separate from public voting. Team
+        updates include the reported time and estimated end; they do not
+        guarantee the physical condition or availability of a bathroom. A saved
+        favorite stays in this browser and can be removed in the app.
+      </p>
       <h2>Your choices and rights</h2>
       <p>
         Depending on the circumstances, you may request access, correction,

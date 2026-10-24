@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { cleaningStateSchema } from "../domain/cleaning.js";
 import {
   authorizationWindow,
   authorizeLocation,
@@ -10,6 +11,7 @@ import {
   readAnonymousId,
 } from "../lib/anonymous-identity.js";
 import type { LocationAuthorizationsRepository } from "../modules/location-authorizations/repository.js";
+import type { OperationsRepository } from "../modules/operations/repository.js";
 import type { ReportsRepository } from "../modules/reports/repository.js";
 import {
   eligibilitySchema,
@@ -94,6 +96,7 @@ export function registerLocationRoutes(
 export function registerBuildingStatusRoutes(
   app: FastifyInstance,
   repository: ReportsRepository,
+  operations?: OperationsRepository,
 ) {
   app.get(
     "/locations/:id/status",
@@ -105,6 +108,7 @@ export function registerBuildingStatusRoutes(
             building: z.literal("HH5"),
             generatedAt: z.date(),
             bathrooms: z.array(reportSummarySchema),
+            cleaning: z.array(cleaningStateSchema),
           }),
         },
       },
@@ -117,6 +121,7 @@ export function registerBuildingStatusRoutes(
         building: id,
         generatedAt: now,
         bathrooms: await repository.findBuildingSummaries(id, now),
+        cleaning: operations ? await operations.buildingStates(now) : [],
       };
     },
   );
