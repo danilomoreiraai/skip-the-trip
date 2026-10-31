@@ -17,7 +17,7 @@ test("new flows keep the compact app shell and usable controls at every width", 
             building: "HH5",
             floor,
             category,
-            available: null,
+            available: true,
             reportedAt: null,
             expiresAt: null,
             yesCount: 0,
@@ -33,7 +33,7 @@ test("new flows keep the compact app shell and usable controls at every width", 
         building: "HH5",
         floor: "1",
         category: "Female",
-        available: null,
+        available: true,
         reportedAt: null,
         expiresAt: null,
         yesCount: 0,
@@ -113,7 +113,7 @@ test("new flows keep the compact app shell and usable controls at every width", 
     .click();
   await expect(
     page.getByRole("region", { name: "Your favorite", exact: true }),
-  ).toContainText("No recent information");
+  ).toContainText("No reports yet");
   await page
     .getByRole("button", { name: "Change device", exact: true })
     .click();

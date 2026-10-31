@@ -1,12 +1,17 @@
-import { and, count, desc, eq, gt, lt, sql } from "drizzle-orm";
+import { and, eq, gte, lt, sql } from "drizzle-orm";
 import type { Database } from "../../db/index.js";
-import { activeVotes, reports } from "../../db/schema.js";
+import { activeVotes, bathroomStatus, reports } from "../../db/schema.js";
+import { BUILDING_TIME_ZONES } from "../../domain/locations.js";
 import type {
   AuthorizedReportInput,
   Bathroom,
   ReportSummary,
 } from "../../domain/reports.js";
-import { bathroomCategories, floors } from "../../domain/reports.js";
+import {
+  bathroomCategories,
+  floors,
+  resolveBathroomStatus,
+} from "../../domain/reports.js";
 
 export type ReportsRepository = {
   createWithCooldown(
@@ -31,7 +36,21 @@ export class IdempotencyConflictError extends Error {
   }
 }
 
-export function createReportsRepository(db: Database): ReportsRepository {
+export function createReportsRepository(
+  db: Database,
+  timeZones: Record<Bathroom["building"], string> = BUILDING_TIME_ZONES,
+): ReportsRepository {
+  const localDay = (building: Bathroom["building"], now: Date) => {
+    const timeZone = timeZones[building];
+    const localStart = sql`date_trunc('day', ${now.toISOString()}::timestamptz at time zone ${timeZone})`;
+    return and(
+      gte(reports.createdAt, sql`(${localStart} at time zone ${timeZone})`),
+      lt(
+        reports.createdAt,
+        sql`((${localStart} + interval '1 day') at time zone ${timeZone})`,
+      ),
+    );
+  };
   return {
     async createWithCooldown(
       input,
@@ -86,66 +105,97 @@ export function createReportsRepository(db: Database): ReportsRepository {
             ],
             set: { available: input.available, updatedAt: now, expiresAt },
           });
+        const closedUntil = input.available ? null : expiresAt;
+        await tx
+          .insert(bathroomStatus)
+          .values({
+            building: input.building,
+            floor: input.floor,
+            category: input.category,
+            available: input.available,
+            lastReportedAt: now,
+            closedUntil,
+          })
+          .onConflictDoUpdate({
+            target: [
+              bathroomStatus.building,
+              bathroomStatus.floor,
+              bathroomStatus.category,
+            ],
+            set: {
+              available: input.available,
+              lastReportedAt: now,
+              closedUntil,
+            },
+          });
         return { created: true, retryAfterSeconds: 0 };
       });
     },
     async findBuildingSummaries(building, now) {
-      const votes = await db.query.activeVotes.findMany({
-        where: and(
-          eq(activeVotes.building, building),
-          gt(activeVotes.expiresAt, now),
-        ),
-        orderBy: [desc(activeVotes.updatedAt)],
-      });
+      const [statuses, totals] = await Promise.all([
+        db.query.bathroomStatus.findMany({
+          where: eq(bathroomStatus.building, building),
+        }),
+        db
+          .select({
+            floor: reports.floor,
+            category: reports.category,
+            yesCount: sql<number>`count(*) filter (where ${reports.available})::int`,
+            noCount: sql<number>`count(*) filter (where not ${reports.available})::int`,
+          })
+          .from(reports)
+          .where(and(eq(reports.building, building), localDay(building, now)))
+          .groupBy(reports.floor, reports.category),
+      ]);
       return floors.flatMap((floor) =>
         bathroomCategories.map((category) => {
-          const matching = votes.filter(
-            (vote) => vote.floor === floor && vote.category === category,
+          const status = statuses.find(
+            (row) => row.floor === floor && row.category === category,
           );
-          const latest = matching[0];
+          const daily = totals.find(
+            (row) => row.floor === floor && row.category === category,
+          );
           return {
             building,
             floor,
             category,
-            available: latest?.available ?? null,
-            reportedAt: latest?.updatedAt ?? null,
-            expiresAt: latest?.expiresAt ?? null,
-            yesCount: matching.filter((vote) => vote.available).length,
-            noCount: matching.filter((vote) => !vote.available).length,
+            ...resolveBathroomStatus(status, now),
+            yesCount: daily?.yesCount ?? 0,
+            noCount: daily?.noCount ?? 0,
           };
         }),
       );
     },
     async findSummary(bathroom, now) {
-      const location = and(
-        eq(activeVotes.building, bathroom.building),
-        eq(activeVotes.floor, bathroom.floor),
-        eq(activeVotes.category, bathroom.category),
-        gt(activeVotes.expiresAt, now),
-      );
-      const [latest, totals] = await Promise.all([
-        db.query.activeVotes.findFirst({
-          where: location,
-          orderBy: [desc(activeVotes.updatedAt)],
+      const [status, totals] = await Promise.all([
+        db.query.bathroomStatus.findFirst({
+          where: and(
+            eq(bathroomStatus.building, bathroom.building),
+            eq(bathroomStatus.floor, bathroom.floor),
+            eq(bathroomStatus.category, bathroom.category),
+          ),
         }),
         db
           .select({
-            yesCount: count(sql`case when ${activeVotes.available} then 1 end`),
-            noCount: count(
-              sql`case when not ${activeVotes.available} then 1 end`,
-            ),
+            yesCount: sql<number>`count(*) filter (where ${reports.available})::int`,
+            noCount: sql<number>`count(*) filter (where not ${reports.available})::int`,
           })
-          .from(activeVotes)
-          .where(location),
+          .from(reports)
+          .where(
+            and(
+              eq(reports.building, bathroom.building),
+              eq(reports.floor, bathroom.floor),
+              eq(reports.category, bathroom.category),
+              localDay(bathroom.building, now),
+            ),
+          ),
       ]);
-      const aggregate = totals[0] ?? { yesCount: 0, noCount: 0 };
+      const daily = totals[0] ?? { yesCount: 0, noCount: 0 };
       return {
         ...bathroom,
-        available: latest?.available ?? null,
-        reportedAt: latest?.updatedAt ?? null,
-        yesCount: aggregate.yesCount,
-        noCount: aggregate.noCount,
-        expiresAt: latest?.expiresAt ?? null,
+        ...resolveBathroomStatus(status, now),
+        yesCount: daily.yesCount,
+        noCount: daily.noCount,
       };
     },
     async deleteExpired(before) {

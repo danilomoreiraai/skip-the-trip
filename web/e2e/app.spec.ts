@@ -70,6 +70,10 @@ test.beforeEach(async ({ page }) => {
       });
     },
   );
+  const closedUntil = (report: { available: boolean; reportedAt: string }) =>
+    report.available
+      ? null
+      : new Date(Date.parse(report.reportedAt) + 30 * 60 * 1000).toISOString();
   const reports = new Map<
     string,
     {
@@ -115,9 +119,7 @@ test.beforeEach(async ({ page }) => {
         json: {
           ...vote,
           ...report,
-          expiresAt: new Date(
-            Date.parse(report.reportedAt) + 30 * 60 * 1000,
-          ).toISOString(),
+          expiresAt: closedUntil(report),
         },
       });
       return;
@@ -135,13 +137,11 @@ test.beforeEach(async ({ page }) => {
         ? {
             ...bathroom,
             ...report,
-            expiresAt: new Date(
-              Date.parse(report.reportedAt) + 30 * 60 * 1000,
-            ).toISOString(),
+            expiresAt: closedUntil(report),
           }
         : {
             ...bathroom,
-            available: null,
+            available: true,
             reportedAt: null,
             expiresAt: null,
             yesCount: 0,
@@ -195,8 +195,8 @@ test("lookup remains operable at 320px with reduced motion and explicit unknown 
   await expect(
     page.getByRole("progressbar", { name: "100% complete" }),
   ).toBeVisible();
-  await expect(page.getByText("No recent information")).toBeVisible();
-  await expect(page.getByText("Be the first to report")).toBeVisible();
+  await expect(page.getByText("Safe trip")).toBeVisible();
+  await expect(page.getByText("No reports yet")).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Yes, available" }),
   ).toBeEnabled();
@@ -232,7 +232,7 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
     page.getByRole("button", { name: "Yes, available" }),
   ).toBeDisabled();
   await select(page);
-  await expect(page.getByText("No recent information")).toBeVisible();
+  await expect(page.getByText("No reports yet")).toBeVisible();
   await page.getByRole("button", { name: "Yes, available" }).click();
   await authorizePendingVote(page);
   await expect(
@@ -250,7 +250,6 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
     "0",
   );
   await expect(page.locator(".status-bar")).toHaveCount(1);
-  await expect(page.getByRole("meter")).toHaveAttribute("value", "100");
   await page.getByRole("button", { name: "Male", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "No, unavailable" }),
@@ -266,11 +265,10 @@ test("selection, latest vote, isolation and persistence", async ({ page }) => {
     page.getByRole("button", { name: "No, unavailable" }),
   ).toBeDisabled();
   await page.reload();
-  await expect(page.getByRole("meter")).toHaveAttribute("value", "100");
   await expect(page.locator(".status-bar")).toHaveCount(1);
   await expect(page.getByText("Safe trip")).toBeVisible();
   await page.getByRole("button", { name: "Male", exact: true }).click();
-  await expect(page.getByText("No recent information")).toBeVisible();
+  await expect(page.getByText("No reports yet")).toBeVisible();
   await page.getByRole("button", { name: "Accessible", exact: true }).click();
   await expect(page.getByText("Safe trip")).toBeVisible();
   expect(
@@ -392,7 +390,7 @@ for (const scenario of [
     expect(verificationRequests).toBe(0);
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await expect(page.getByRole("dialog")).toBeHidden();
-    await expect(page.getByText("No recent information")).toBeVisible();
+    await expect(page.getByText("No reports yet")).toBeVisible();
     await expect(page.getByRole("status", { name: "0 YES votes" })).toHaveText(
       "0",
     );
@@ -417,7 +415,7 @@ test("refreshes an open counter when a third person votes", async ({
           category: "Male",
           available: true,
           reportedAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          expiresAt: null,
           yesCount: reads === 1 ? 2 : 3,
           noCount: 0,
         },
@@ -439,15 +437,15 @@ test("refreshes an open counter when a third person votes", async ({
     { timeout: 7_000 },
   );
 });
-test("expires while the page stays open", async ({ page }) => {
+test("a NO closure ends while the page stays open", async ({ page }) => {
   await page.clock.install();
   await page.goto("/");
   await select(page);
-  await page.getByRole("button", { name: "Yes, available" }).click();
+  await page.getByRole("button", { name: "No, unavailable" }).click();
   await authorizePendingVote(page);
-  await expect(page.getByText("Safe trip")).toBeVisible();
+  await expect(page.getByText("Unavailable", { exact: true })).toBeVisible();
   await page.clock.fastForward(30 * 60 * 1000 + 1000);
-  await expect(page.getByText("No recent information")).toBeVisible();
+  await expect(page.getByText("Safe trip")).toBeVisible();
 });
 test("load failure can be retried", async ({ page }) => {
   await page.goto("/");
@@ -461,7 +459,7 @@ test("load failure can be retried", async ({ page }) => {
   await expect(page.getByRole("alert")).toContainText("Couldn't load");
   await page.unroute("http://localhost:3333/reports?**");
   await page.getByRole("button", { name: "Try again" }).click();
-  await expect(page.getByText("No recent information")).toBeVisible();
+  await expect(page.getByText("No reports yet")).toBeVisible();
 });
 test("privacy, 404, keyboard and reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });

@@ -66,7 +66,11 @@ Drizzle PostgreSQL adapter
 - The HTTP interface is `GET /reports` and `POST /reports`.
 - The reports repository is the persistence seam used by production and tests.
 - An idempotency key prevents a network retry from counting the same vote twice.
-- Only reports inside `REPORT_WINDOW_MINUTES` contribute to the returned status.
+- Each bathroom has one row in `bathroom_status`. Bathrooms are available by
+  default; YES never expires and NO closes the bathroom for
+  `REPORT_WINDOW_MINUTES`. Daily YES/NO counters are derived from `reports` and
+  reset at local midnight in the building's own time zone
+  (`BUILDING_TIME_ZONES`).
 - Repeated votes from the same installation and bathroom are rejected for
   `VOTE_COOLDOWN_SECONDS` (300 seconds by default).
 - The retention function coordinates the reports and location-authorization

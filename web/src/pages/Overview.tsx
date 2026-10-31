@@ -90,18 +90,11 @@ export function Overview({
               {query.data.bathrooms
                 .filter((b) => b.floor === floor)
                 .map((bathroom) => {
-                  const state =
-                    bathroom.available === null
-                      ? "unknown"
-                      : bathroom.available
-                        ? "available"
-                        : "unavailable";
+                  const state = bathroom.available
+                    ? "available"
+                    : "unavailable";
                   const status =
-                    state === "unknown"
-                      ? "No recent information"
-                      : state === "available"
-                        ? "Available"
-                        : "Unavailable";
+                    state === "available" ? "Available" : "Unavailable";
                   return (
                     <article
                       id={`bathroom-${bathroomKey(bathroom)}`}

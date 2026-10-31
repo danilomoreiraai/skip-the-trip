@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { Check, HelpCircle, LoaderCircle, RefreshCw, Star } from "lucide-react";
+import { Check, LoaderCircle, RefreshCw, Star } from "lucide-react";
 import { type ReactNode, useEffect, useId, useState } from "react";
-import { type Bathroom, bathroomKey, isRecent } from "../domain/bathroom";
+import { type Bathroom, bathroomKey, isAvailable } from "../domain/bathroom";
 import { getReport } from "../services/reports";
 import { BathroomIcon } from "./BathroomIcon";
 export function FavoriteButton({
@@ -139,22 +139,19 @@ function FavoriteLiveStatus({
     refetchOnWindowFocus: true,
     refetchOnReconnect: true,
   });
-  const recent =
-    !query.isError && !query.isPending && isRecent(query.data, now);
-  const state = recent
-    ? query.data?.available
+  const settled = !query.isError && !query.isPending;
+  const state = !settled
+    ? "unknown"
+    : isAvailable(query.data, now)
       ? "available"
-      : "unavailable"
-    : "unknown";
+      : "unavailable";
   const label = query.isPending
     ? "Loading your favorite status…"
     : query.isError
       ? "Couldn't load your favorite status."
       : state === "available"
         ? "Available"
-        : state === "unavailable"
-          ? "Unavailable"
-          : "No recent information";
+        : "Unavailable";
   return (
     <section className="favorite-saved" aria-label="Your favorite">
       <div className={`favorite-summary favorite-strip ${state}`}>
@@ -178,14 +175,12 @@ function FavoriteLiveStatus({
               <LoaderCircle size={18} aria-hidden="true" />
             ) : state === "available" ? (
               <Check size={20} aria-hidden="true" />
-            ) : state === "unavailable" ? (
+            ) : (
               <img
                 src={`${import.meta.env.BASE_URL}assets/cleaning.png`}
                 alt=""
                 aria-hidden="true"
               />
-            ) : (
-              <HelpCircle size={20} aria-hidden="true" />
             )}
             <span className="sr-only">{label}</span>
           </div>
@@ -198,7 +193,7 @@ function FavoriteLiveStatus({
           "Couldn't update status."
         ) : query.data?.reportedAt ? (
           <>
-            Reported at{" "}
+            Last report at{" "}
             <time dateTime={new Date(query.data.reportedAt).toISOString()}>
               {new Date(query.data.reportedAt).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -207,7 +202,7 @@ function FavoriteLiveStatus({
             </time>
           </>
         ) : (
-          "No recent information"
+          "No reports yet"
         )}
       </p>
     </section>

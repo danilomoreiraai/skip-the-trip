@@ -8,7 +8,7 @@ const SELECTION_KEY = storageKey("skip-the-trip:selection");
 const apiUrl = env.VITE_API_URL.replace(/\/$/, "");
 
 export const apiReportSchema = bathroomSchema.extend({
-  available: z.boolean().nullable(),
+  available: z.boolean(),
   reportedAt: z.string().datetime().nullable(),
   yesCount: z.number().int().nonnegative(),
   noCount: z.number().int().nonnegative(),
@@ -88,18 +88,18 @@ export class LocationVerificationError extends Error {
   }
 }
 
-function toReport(report: z.infer<typeof apiReportSchema>): Report | null {
-  if (report.available === null || report.reportedAt === null) return null;
+function toReport(report: z.infer<typeof apiReportSchema>): Report {
   return {
     available: report.available,
-    reportedAt: Date.parse(report.reportedAt),
-    expiresAt: Date.parse(report.expiresAt ?? report.reportedAt),
+    reportedAt:
+      report.reportedAt === null ? null : Date.parse(report.reportedAt),
+    expiresAt: report.expiresAt === null ? null : Date.parse(report.expiresAt),
     yesCount: report.yesCount,
     noCount: report.noCount,
   };
 }
 
-export async function getReport(bathroom: Bathroom): Promise<Report | null> {
+export async function getReport(bathroom: Bathroom): Promise<Report> {
   const validBathroom = bathroomSchema.parse(bathroom);
   return observability.withSpan(
     "reports.read",
@@ -141,10 +141,7 @@ export async function submitReport(
           idempotencyKey,
         }),
       });
-      const report = toReport(await parseResponse(response));
-      if (!report)
-        throw new Error("API returned an empty report after accepting a vote");
-      return report;
+      return toReport(await parseResponse(response));
     },
   );
 }
