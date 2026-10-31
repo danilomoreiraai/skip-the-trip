@@ -15,6 +15,13 @@
       "when": 1791409506850,
       "tag": "0001_complex_kylun",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793407768546,
+      "tag": "0002_bathroom_status",
+      "breakpoints": true
     }
   ]
 }

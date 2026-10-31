@@ -40,7 +40,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await pool.query(
-    "truncate table reports, active_votes, location_authorizations restart identity",
+    "truncate table reports, active_votes, bathroom_status, location_authorizations restart identity",
   );
 });
 afterAll(async () => {
@@ -48,64 +48,190 @@ afterAll(async () => {
 });
 
 describe("PostgreSQL reports repository", () => {
-  it("consolidates current bathroom votes into the twelve supported HH5 entries", async () => {
-    const now = new Date("2026-10-20T10:00:00.000Z");
+  it("shows every bathroom as available by default, with no report time", async () => {
+    const summary = await repository.findBuildingSummaries(
+      "HH5",
+      new Date("2026-10-20T08:00:00.000Z"),
+    );
+    expect(summary).toHaveLength(12);
+    for (const entry of summary)
+      expect(entry).toMatchObject({
+        available: true,
+        reportedAt: null,
+        expiresAt: null,
+        yesCount: 0,
+        noCount: 0,
+      });
+  });
+
+  it("keeps YES available indefinitely and records the last report time", async () => {
+    const reportedAt = new Date("2026-10-20T10:00:00.000Z");
+    await repository.createWithCooldown(vote(), 300, 30, reportedAt);
+    const summary = await repository.findSummary(
+      bathroom,
+      new Date("2026-10-20T18:00:00.000Z"),
+    );
+    expect(summary).toMatchObject({
+      available: true,
+      reportedAt,
+      expiresAt: null,
+    });
+  });
+
+  it("closes the bathroom for 30 minutes on NO, then returns to available", async () => {
+    const reportedAt = new Date("2026-10-20T10:00:00.000Z");
+    await repository.createWithCooldown(
+      vote({ available: false }),
+      300,
+      30,
+      reportedAt,
+    );
+    const closed = await repository.findSummary(
+      bathroom,
+      new Date("2026-10-20T10:29:59.000Z"),
+    );
+    expect(closed).toMatchObject({
+      available: false,
+      reportedAt,
+      expiresAt: new Date("2026-10-20T10:30:00.000Z"),
+    });
+    const reopened = await repository.findSummary(
+      bathroom,
+      new Date("2026-10-20T10:30:00.000Z"),
+    );
+    expect(reopened).toMatchObject({ available: true, reportedAt });
+  });
+
+  it("reopens immediately when someone reports YES during a closure", async () => {
+    await repository.createWithCooldown(
+      vote({ available: false }),
+      300,
+      30,
+      new Date("2026-10-20T10:00:00.000Z"),
+    );
+    const yesAt = new Date("2026-10-20T10:10:00.000Z");
+    await repository.createWithCooldown(vote(), 300, 30, yesAt);
+    const summary = await repository.findSummary(
+      bathroom,
+      new Date("2026-10-20T10:11:00.000Z"),
+    );
+    expect(summary).toMatchObject({
+      available: true,
+      reportedAt: yesAt,
+      expiresAt: null,
+    });
+  });
+
+  it("restarts the 30 minute closure when another NO arrives", async () => {
+    await repository.createWithCooldown(
+      vote({ available: false }),
+      300,
+      30,
+      new Date("2026-10-20T10:00:00.000Z"),
+    );
+    await repository.createWithCooldown(
+      vote({ available: false }),
+      300,
+      30,
+      new Date("2026-10-20T10:20:00.000Z"),
+    );
+    const summary = await repository.findSummary(
+      bathroom,
+      new Date("2026-10-20T10:40:00.000Z"),
+    );
+    expect(summary).toMatchObject({
+      available: false,
+      expiresAt: new Date("2026-10-20T10:50:00.000Z"),
+    });
+  });
+
+  it("counts every accepted vote of the day per bathroom", async () => {
+    const now = new Date("2026-10-08T10:00:00.000Z");
     await repository.createWithCooldown(vote(), 300, 30, now);
+    await repository.createWithCooldown(vote(), 300, 30, now);
+    await repository.createWithCooldown(
+      vote({ available: false }),
+      300,
+      30,
+      now,
+    );
     await repository.createWithCooldown(
       vote({ floor: "2", category: "Female", available: false }),
       300,
       30,
       now,
     );
-    await repository.createWithCooldown(
-      vote({ floor: "1" }),
-      300,
-      30,
-      new Date("2026-10-20T09:00:00.000Z"),
-    );
-    const summary = await repository.findBuildingSummaries("HH5", now);
-    expect(summary).toHaveLength(12);
+    expect(await repository.findSummary(bathroom, now)).toMatchObject({
+      yesCount: 2,
+      noCount: 1,
+    });
+    const building = await repository.findBuildingSummaries("HH5", now);
     expect(
-      summary.find((b) => b.floor === "G" && b.category === "Male"),
-    ).toMatchObject({ yesCount: 1, noCount: 0 });
+      building.find((b) => b.floor === "G" && b.category === "Male"),
+    ).toMatchObject({ yesCount: 2, noCount: 1 });
     expect(
-      summary.find((b) => b.floor === "2" && b.category === "Female"),
+      building.find((b) => b.floor === "2" && b.category === "Female"),
     ).toMatchObject({ yesCount: 0, noCount: 1 });
     expect(
-      summary.find((b) => b.floor === "1" && b.category === "Male"),
-    ).toMatchObject({ available: null, yesCount: 0 });
-  });
-  it("counts three independent active identities for the same bathroom", async () => {
-    const now = new Date("2026-10-08T10:00:00.000Z");
-    await repository.createWithCooldown(vote(), 300, 30, now);
-    await repository.createWithCooldown(vote(), 300, 30, now);
-    await repository.createWithCooldown(vote(), 300, 30, now);
-
-    const summary = await repository.findSummary(bathroom, now);
-
-    expect(summary).toMatchObject({ yesCount: 3, noCount: 0 });
+      building.find((b) => b.floor === "1" && b.category === "Male"),
+    ).toMatchObject({ yesCount: 0, noCount: 0 });
   });
 
-  it("keeps one active contribution per identity and updates its status after cooldown", async () => {
+  it("resets the counters at local midnight", async () => {
+    // Europe/Dublin is UTC+1 in July: 22:30Z is 23:30 local, 23:30Z is 00:30 next day.
+    await repository.createWithCooldown(
+      vote(),
+      300,
+      30,
+      new Date("2026-07-10T22:30:00.000Z"),
+    );
+    await repository.createWithCooldown(
+      vote({ available: false }),
+      300,
+      30,
+      new Date("2026-07-10T23:30:00.000Z"),
+    );
+    expect(
+      await repository.findSummary(
+        bathroom,
+        new Date("2026-07-10T22:45:00.000Z"),
+      ),
+    ).toMatchObject({ yesCount: 1, noCount: 0 });
+    expect(
+      await repository.findSummary(
+        bathroom,
+        new Date("2026-07-10T23:45:00.000Z"),
+      ),
+    ).toMatchObject({ yesCount: 0, noCount: 1 });
+  });
+
+  it("lets one identity vote again after the cooldown", async () => {
     const anonymousId = randomUUID();
-    const first = new Date("2026-10-07T10:00:00.000Z");
-    await repository.createWithCooldown(vote({ anonymousId }), 300, 30, first);
+    await repository.createWithCooldown(
+      vote({ anonymousId }),
+      300,
+      30,
+      new Date("2026-10-07T10:00:00.000Z"),
+    );
+    const early = await repository.createWithCooldown(
+      vote({ anonymousId, available: false }),
+      300,
+      30,
+      new Date("2026-10-07T10:04:00.000Z"),
+    );
+    expect(early).toEqual({ created: false, retryAfterSeconds: 60 });
     await repository.createWithCooldown(
       vote({ anonymousId, available: false }),
       300,
       30,
       new Date("2026-10-07T10:05:00.000Z"),
     );
-    const summary = await repository.findSummary(
-      bathroom,
-      new Date("2026-10-07T10:05:01.000Z"),
-    );
-    expect(summary).toMatchObject({
-      available: false,
-      yesCount: 0,
-      noCount: 1,
-    });
-    expect(summary.expiresAt).toEqual(new Date("2026-10-07T10:35:00.000Z"));
+    expect(
+      await repository.findSummary(
+        bathroom,
+        new Date("2026-10-07T10:06:00.000Z"),
+      ),
+    ).toMatchObject({ available: false, yesCount: 1, noCount: 1 });
   });
 
   it("serializes simultaneous votes and preserves idempotent retries", async () => {
@@ -130,20 +256,6 @@ describe("PostgreSQL reports repository", () => {
     await expect(
       repository.createWithCooldown({ ...input, available: false }, 300, 30),
     ).rejects.toBeInstanceOf(IdempotencyConflictError);
-  });
-
-  it("excludes expired votes without waiting for physical cleanup", async () => {
-    await repository.createWithCooldown(
-      vote(),
-      300,
-      30,
-      new Date("2026-10-07T10:00:00.000Z"),
-    );
-    const summary = await repository.findSummary(
-      bathroom,
-      new Date("2026-10-07T10:30:00.000Z"),
-    );
-    expect(summary).toMatchObject({ available: null, yesCount: 0, noCount: 0 });
   });
 });
 
@@ -223,6 +335,12 @@ describe("PostgreSQL location authorization repository", () => {
       locationAuthorizations: 1,
       reports: 1,
       total: 3,
+    });
+    await expect(
+      repository.findSummary(bathroom, new Date("2026-10-11T13:00:00.000Z")),
+    ).resolves.toMatchObject({
+      available: true,
+      reportedAt: new Date("2026-10-01T10:00:00.000Z"),
     });
   });
 });

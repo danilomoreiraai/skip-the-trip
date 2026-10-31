@@ -69,20 +69,18 @@ export function Overview({
                   <article
                     id={`bathroom-${bathroomKey(bathroom)}`}
                     tabIndex={-1}
-                    className={`overview-bathroom ${bathroom.available === null ? "unknown" : bathroom.available ? "available" : "unavailable"}`}
+                    className={`overview-bathroom ${bathroom.available ? "available" : "unavailable"}`}
                     key={bathroom.category}
                   >
                     <h3>{bathroom.category}</h3>
                     <p className="overview-state">
-                      {bathroom.available === null
-                        ? "No recent information"
-                        : bathroom.available
-                          ? "Available · community report"
-                          : "Unavailable · community report"}
+                      {bathroom.available
+                        ? "Available"
+                        : "Unavailable · community report"}
                     </p>
                     <p className="report-time">
                       {bathroom.reportedAt
-                        ? `Reported at ${new Date(bathroom.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+                        ? `Last report at ${new Date(bathroom.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
                         : "No community reports yet"}
                     </p>
                     <div className="overview-actions">

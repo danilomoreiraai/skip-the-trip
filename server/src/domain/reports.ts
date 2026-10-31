@@ -21,9 +21,35 @@ export type CreateReportInput = z.infer<typeof createReportBodySchema>;
 export type AuthorizedReportInput = CreateReportInput & { anonymousId: string };
 
 export type ReportSummary = Bathroom & {
-  available: boolean | null;
+  available: boolean;
   reportedAt: Date | null;
   yesCount: number;
   noCount: number;
   expiresAt: Date | null;
 };
+
+export type StoredBathroomStatus = {
+  available: boolean;
+  lastReportedAt: Date;
+  closedUntil: Date | null;
+};
+
+/**
+ * Bathrooms are available unless a NO report closed them and the closure has
+ * not ended yet. YES never expires.
+ */
+export function resolveBathroomStatus(
+  status: StoredBathroomStatus | undefined,
+  now: Date,
+): Pick<ReportSummary, "available" | "reportedAt" | "expiresAt"> {
+  const closed =
+    status !== undefined &&
+    !status.available &&
+    status.closedUntil !== null &&
+    status.closedUntil > now;
+  return {
+    available: !closed,
+    reportedAt: status?.lastReportedAt ?? null,
+    expiresAt: closed ? status.closedUntil : null,
+  };
+}

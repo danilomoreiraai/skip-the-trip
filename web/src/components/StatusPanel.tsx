@@ -1,6 +1,6 @@
 import { Check, HelpCircle, RefreshCw } from "lucide-react";
 import { AnimatePresence, m, useReducedMotion } from "motion/react";
-import { type Bathroom, isRecent, type Report } from "../domain/bathroom";
+import { type Bathroom, isAvailable, type Report } from "../domain/bathroom";
 import { motionTokens, springs } from "../lib/motion";
 import { Button, Skeleton } from "./ui";
 export function StatusPanel({
@@ -30,16 +30,7 @@ export function StatusPanel({
         </Button>
       </div>
     );
-  const yes = report?.yesCount ?? 0;
-  const no = report?.noCount ?? 0;
-  const total = yes + no;
-  const percentage = total ? Math.round((yes / total) * 100) : 0;
-  const recent = isRecent(report, now);
-  const state = recent
-    ? report?.available
-      ? "available"
-      : "unavailable"
-    : "unknown";
+  const state = isAvailable(report, now) ? "available" : "unavailable";
   return (
     <AnimatePresence mode="sync">
       <m.div
@@ -52,34 +43,22 @@ export function StatusPanel({
         exit={{ opacity: 0, y: reduced ? 0 : -motionTokens.distance.sm }}
         transition={springs.gentle}
       >
-        {bathroom && recent && total > 0 ? (
+        {bathroom ? (
           <div className="status-bar percentage-bar">
-            <meter
-              className="sr-only"
-              min={0}
-              max={100}
-              value={percentage}
-              aria-label="YES vote percentage"
-            >
-              {percentage}% YES
-            </meter>
             <div
               className="percentage-fill"
-              style={{ transform: `scaleX(${yes / total})` }}
+              style={{ transform: `scaleX(${state === "available" ? 1 : 0})` }}
               aria-hidden="true"
             />
-            <div
-              className={`percentage-labels ${yes === 0 || no === 0 ? "single-status" : ""}`}
-            >
-              {yes > 0 && (
+            <div className="percentage-labels single-status">
+              {state === "available" ? (
                 <span>
                   <Check size={15} />
                   <span>
                     <strong>Safe trip</strong>
                   </span>
                 </span>
-              )}
-              {no > 0 && (
+              ) : (
                 <span>
                   <img
                     src="/assets/cleaning.png"
@@ -97,16 +76,14 @@ export function StatusPanel({
         ) : (
           <div className="status-bar">
             <HelpCircle size={20} />
-            <h2>
-              {bathroom ? "No recent information" : "Select your bathroom"}
-            </h2>
+            <h2>Select your bathroom</h2>
           </div>
         )}
         {bathroom && (
           <p className="report-time">
-            {report
-              ? `${recent ? "Reported" : "Last report"} at ${new Date(report.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}${recent ? "" : " · Expired"}`
-              : "Be the first to report"}
+            {report?.reportedAt
+              ? `Last report at ${new Date(report.reportedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`
+              : "No reports yet"}
           </p>
         )}
       </m.div>

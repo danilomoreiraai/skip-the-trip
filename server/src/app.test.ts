@@ -1,20 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { buildApp } from "./app.js";
 import type { LocationAuthorizationWindow } from "./domain/locations.js";
-import type {
-  AuthorizedReportInput,
-  Bathroom,
-  ReportSummary,
+import {
+  type AuthorizedReportInput,
+  type Bathroom,
+  type ReportSummary,
+  resolveBathroomStatus,
+  type StoredBathroomStatus,
 } from "./domain/reports.js";
 import type { LocationAuthorizationsRepository } from "./modules/location-authorizations/repository.js";
 import type { ReportsRepository } from "./modules/reports/repository.js";
 
 function createFakeReportsRepository(): ReportsRepository {
-  const votes = new Map<
-    string,
-    AuthorizedReportInput & { updatedAt: Date; expiresAt: Date }
-  >();
+  const cooldowns = new Map<string, Date>();
   const operations = new Map<string, AuthorizedReportInput>();
+  const statuses = new Map<string, StoredBathroomStatus>();
+  const tally = new Map<string, { yes: number; no: number }>();
+  const keyOf = (b: Bathroom) => `${b.building}:${b.floor}:${b.category}`;
   return {
     async findBuildingSummaries(building, now) {
       const result: ReportSummary[] = [];
@@ -31,43 +33,36 @@ function createFakeReportsRepository(): ReportsRepository {
       windowMinutes,
       now = new Date(),
     ) {
-      const operation = operations.get(input.idempotencyKey);
-      if (operation) return { created: false, retryAfterSeconds: 0 };
-      const key = `${input.anonymousId}:${input.building}:${input.floor}:${input.category}`;
-      const latest = votes.get(key);
+      if (operations.has(input.idempotencyKey))
+        return { created: false, retryAfterSeconds: 0 };
+      const cooldownKey = `${input.anonymousId}:${keyOf(input)}`;
+      const latest = cooldowns.get(cooldownKey);
       const retryAfterSeconds = latest
-        ? Math.ceil(
-            cooldownSeconds -
-              (now.getTime() - latest.updatedAt.getTime()) / 1000,
-          )
+        ? Math.ceil(cooldownSeconds - (now.getTime() - latest.getTime()) / 1000)
         : 0;
       if (retryAfterSeconds > 0) return { created: false, retryAfterSeconds };
       operations.set(input.idempotencyKey, input);
-      votes.set(key, {
-        ...input,
-        updatedAt: now,
-        expiresAt: new Date(now.getTime() + windowMinutes * 60_000),
+      cooldowns.set(cooldownKey, now);
+      statuses.set(keyOf(input), {
+        available: input.available,
+        lastReportedAt: now,
+        closedUntil: input.available
+          ? null
+          : new Date(now.getTime() + windowMinutes * 60_000),
       });
+      const counts = tally.get(keyOf(input)) ?? { yes: 0, no: 0 };
+      if (input.available) counts.yes += 1;
+      else counts.no += 1;
+      tally.set(keyOf(input), counts);
       return { created: true, retryAfterSeconds: 0 };
     },
     async findSummary(bathroom: Bathroom, now: Date): Promise<ReportSummary> {
-      const matching = [...votes.values()]
-        .filter(
-          (vote) =>
-            vote.building === bathroom.building &&
-            vote.floor === bathroom.floor &&
-            vote.category === bathroom.category &&
-            vote.expiresAt > now,
-        )
-        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
-      const latest = matching[0];
+      const counts = tally.get(keyOf(bathroom)) ?? { yes: 0, no: 0 };
       return {
         ...bathroom,
-        available: latest?.available ?? null,
-        reportedAt: latest?.updatedAt ?? null,
-        expiresAt: latest?.expiresAt ?? null,
-        yesCount: matching.filter((vote) => vote.available).length,
-        noCount: matching.filter((vote) => !vote.available).length,
+        ...resolveBathroomStatus(statuses.get(keyOf(bathroom)), now),
+        yesCount: counts.yes,
+        noCount: counts.no,
       };
     },
     async deleteExpired() {
@@ -148,7 +143,9 @@ describe("location-authorized reports", () => {
       building: "HH5",
       floor: "G",
       category: "Male",
-      available: null,
+      available: true,
+      reportedAt: null,
+      expiresAt: null,
       yesCount: 0,
     });
     expect(
@@ -205,6 +202,28 @@ describe("location-authorized reports", () => {
       yesCount: 1,
       noCount: 0,
     });
+    await app.close();
+  });
+
+  it("closes the bathroom after a NO and reopens it after a YES", async () => {
+    const app = await testApp();
+    const cookie = await authorize(app);
+    const no = await app.inject({
+      method: "POST",
+      url: "/reports",
+      headers: { cookie },
+      payload: { ...vote, available: false },
+    });
+    expect(no.json()).toMatchObject({
+      available: false,
+      expiresAt: expect.any(String),
+      noCount: 1,
+    });
+    const status = await app.inject({
+      method: "GET",
+      url: "/reports?building=HH5&floor=G&category=Male",
+    });
+    expect(status.json()).toMatchObject({ available: false });
     await app.close();
   });
 

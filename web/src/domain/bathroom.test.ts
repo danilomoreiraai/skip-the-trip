@@ -2,47 +2,27 @@ import { describe, expect, it } from "vitest";
 import {
   bathroomKey,
   bathroomSchema,
+  CLOSURE_DURATION,
+  isAvailable,
   isBuildingAvailable,
-  isRecent,
-  REPORT_LIFETIME,
 } from "./bathroom";
 
-describe("report freshness", () => {
+describe("bathroom availability", () => {
   const reportedAt = 1_000_000;
-  it("expires exactly at 30 minutes", () => {
-    expect(
-      isRecent(
-        {
-          available: true,
-          reportedAt,
-          expiresAt: reportedAt + REPORT_LIFETIME,
-        },
-        reportedAt + REPORT_LIFETIME - 1,
-      ),
-    ).toBe(true);
-    expect(
-      isRecent(
-        {
-          available: true,
-          reportedAt,
-          expiresAt: reportedAt + REPORT_LIFETIME,
-        },
-        reportedAt + REPORT_LIFETIME,
-      ),
-    ).toBe(false);
+  const closureEnd = reportedAt + CLOSURE_DURATION;
+  it("is available when nobody has reported", () => {
+    expect(isAvailable(null)).toBe(true);
+    expect(isAvailable(undefined)).toBe(true);
   });
-  it("rejects missing and future reports", () => {
-    expect(isRecent(null)).toBe(false);
-    expect(
-      isRecent(
-        {
-          available: false,
-          reportedAt,
-          expiresAt: reportedAt + REPORT_LIFETIME,
-        },
-        reportedAt - 1,
-      ),
-    ).toBe(false);
+  it("keeps YES available however old the report is", () => {
+    const report = { available: true, reportedAt, expiresAt: null };
+    expect(isAvailable(report, reportedAt + 12 * 60 * 60 * 1000)).toBe(true);
+  });
+  it("is closed for exactly 30 minutes after a NO", () => {
+    const report = { available: false, reportedAt, expiresAt: closureEnd };
+    expect(CLOSURE_DURATION).toBe(30 * 60 * 1000);
+    expect(isAvailable(report, closureEnd - 1)).toBe(false);
+    expect(isAvailable(report, closureEnd)).toBe(true);
   });
   it("isolates location and validates catalog", () => {
     expect(
