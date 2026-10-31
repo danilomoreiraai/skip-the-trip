@@ -16,7 +16,7 @@ it("loads a consolidated public HH5 status without credentials", async () => {
                 building: "HH5",
                 floor: "1",
                 category: "Female",
-                available: null,
+                available: true,
                 reportedAt: null,
                 expiresAt: null,
                 yesCount: 0,
@@ -27,7 +27,7 @@ it("loads a consolidated public HH5 status without credentials", async () => {
         ),
     ),
   );
-  expect((await getBuildingStatus()).bathrooms[0]?.available).toBeNull();
+  expect((await getBuildingStatus()).bathrooms[0]?.available).toBe(true);
   expect(vi.mocked(fetch).mock.calls[0]).toMatchObject([
     "http://localhost:3333/locations/HH5/status",
     { credentials: "omit", cache: "no-store" },

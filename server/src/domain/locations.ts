@@ -5,6 +5,19 @@ export const CONFIRMED_HH5_LOCATION = {
   radiusMeters: 500,
 } as const;
 
+/**
+ * IANA time zone of each building. It defines where "today" starts and ends
+ * for the daily vote counters, so buildings in different zones reset at their
+ * own local midnight. Add an entry when a new building is cataloged.
+ */
+export const BUILDING_TIME_ZONES = {
+  HH1: "Europe/Dublin",
+  HH2: "Europe/Dublin",
+  HH3: "Europe/Dublin",
+  HH4: "Europe/Dublin",
+  HH5: "Europe/Dublin",
+} as const;
+
 export const LOCATION_AUTHORIZATION_SECONDS = 4 * 60 * 60;
 
 export type Coordinates = {
