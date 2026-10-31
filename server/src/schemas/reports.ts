@@ -7,7 +7,7 @@ import {
 export { createReportBodySchema, getReportQuerySchema };
 
 export const reportSummarySchema = getReportQuerySchema.extend({
-  available: z.boolean().nullable(),
+  available: z.boolean(),
   reportedAt: z.date().nullable(),
   yesCount: z.number().int().nonnegative(),
   noCount: z.number().int().nonnegative(),

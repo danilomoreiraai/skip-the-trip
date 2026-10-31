@@ -43,7 +43,7 @@ describe("reports API service", () => {
       vi.fn(async () =>
         response({
           ...location,
-          available: true,
+          available: false,
           reportedAt: "2026-10-04T12:30:00.000Z",
           expiresAt: "2026-10-04T13:00:00.000Z",
           yesCount: 3,
@@ -52,7 +52,7 @@ describe("reports API service", () => {
       ),
     );
     await expect(getReport(location)).resolves.toEqual({
-      available: true,
+      available: false,
       reportedAt: 1_791_117_000_000,
       expiresAt: 1_791_118_800_000,
       yesCount: 3,
@@ -65,13 +65,13 @@ describe("reports API service", () => {
     expect(new Headers(init?.headers).get("accept")).toBe("application/json");
   });
 
-  it("maps an empty API summary to no current report", async () => {
+  it("maps a bathroom nobody reported to available with no report time", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         response({
           ...location,
-          available: null,
+          available: true,
           reportedAt: null,
           expiresAt: null,
           yesCount: 0,
@@ -79,7 +79,13 @@ describe("reports API service", () => {
         }),
       ),
     );
-    await expect(getReport(location)).resolves.toBeNull();
+    await expect(getReport(location)).resolves.toEqual({
+      available: true,
+      reportedAt: null,
+      expiresAt: null,
+      yesCount: 0,
+      noCount: 0,
+    });
   });
 
   it("submits a cookie-authenticated idempotent vote", async () => {
@@ -248,7 +254,7 @@ describe("reports API service", () => {
     await expect(getReport(location)).rejects.toThrow("Request failed (502)");
   });
 
-  it("rejects an empty summary after an accepted vote", async () => {
+  it("rejects a summary without a resolved availability", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -265,7 +271,7 @@ describe("reports API service", () => {
         ),
       ),
     );
-    await expect(submitReport(location, true)).rejects.toThrow("empty report");
+    await expect(submitReport(location, true)).rejects.toThrow();
   });
 });
 

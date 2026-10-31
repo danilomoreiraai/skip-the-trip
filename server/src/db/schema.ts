@@ -82,3 +82,20 @@ export const activeVotes = pgTable(
     ),
   ],
 );
+
+export const bathroomStatus = pgTable(
+  "bathroom_status",
+  {
+    building: varchar("building", { length: 3 }).notNull(),
+    floor: varchar("floor", { length: 1 }).notNull(),
+    category: bathroomCategory("category").notNull(),
+    available: boolean("available").notNull(),
+    lastReportedAt: timestamp("last_reported_at", {
+      withTimezone: true,
+    }).notNull(),
+    closedUntil: timestamp("closed_until", { withTimezone: true }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.building, table.floor, table.category] }),
+  ],
+);

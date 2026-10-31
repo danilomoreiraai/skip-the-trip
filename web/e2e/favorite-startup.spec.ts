@@ -46,9 +46,9 @@ test("saved favorite shows live status before device choice and handles refresh 
               ...favorite,
               available,
               reportedAt: new Date(Date.now() - 1000).toISOString(),
-              expiresAt: new Date(
-                Date.now() + (expired ? -1 : 60000),
-              ).toISOString(),
+              expiresAt: available
+                ? null
+                : new Date(Date.now() + (expired ? -1 : 60000)).toISOString(),
               yesCount: 1,
               noCount: 0,
             },
@@ -114,7 +114,9 @@ test("saved favorite shows live status before device choice and handles refresh 
     path: testInfo.outputPath("favorite-unavailable.png"),
   });
   expired = true;
-  await expect(card).toContainText("No recent information", { timeout: 10000 });
+  await expect(card.locator(".favorite-strip.available")).toBeVisible({
+    timeout: 10000,
+  });
   failed = true;
   await expect(card.getByRole("alert")).toContainText(
     "Couldn't load your favorite",
