@@ -11,7 +11,7 @@ Você é o orquestrador. Gaste o mínimo de tokens: não leia código nem docs a
    b. Se algum subagente responder `confianca: "baixa"` com `severidade` critica ou alta, repita a investigação daquele trecho uma vez com o mesmo subagente usando `model: opus`.
    c. Envie pelo Telegram (HTML, no máximo cerca de 15 linhas):
       `🔴 <b>Skip The Trip</b> — <failed>/<total> falhas` e, por falha: alvo, check, severidade, causa provável, ação sugerida. Marque `(intermitente)` quando for o caso.
-   d. Se houver severidade critica ou alta e não intermitente E `gh auth status` funcionar: procure uma issue aberta com label `health-check` (`gh issue list -R danilomoreiraai/skip-the-trip -l health-check --state open`). Se existir, comente nela; senão, crie uma com esse label (crie o label se faltar). Inclua o link da issue na mensagem do Telegram. Se o `gh` não estiver autenticado, pule a issue sem tentar logar.
+   d. Se houver severidade critica ou alta e não intermitente E `gh` estiver disponível: use SÓ a API REST (`gh issue`/`gh pr` usam GraphQL, que é bloqueado na nuvem). Procure issue aberta: `gh api 'repos/danilomoreiraai/skip-the-trip/issues?labels=health-check&state=open'`. Se existir, comente: `gh api repos/danilomoreiraai/skip-the-trip/issues/<n>/comments -f body=...`; senão crie: `gh api repos/danilomoreiraai/skip-the-trip/issues -f title=... -f body=... -f 'labels[]=health-check'`. Inclua o link da issue na mensagem do Telegram. Se o `gh api` falhar, pule a issue sem tentar logar.
 4. Itens em `skipped` não são falhas: não alerte por eles.
 5. Se o script sair com código 2 ou o Telegram falhar, tente uma vez de novo; se persistir, deixe o erro na saída final.
 

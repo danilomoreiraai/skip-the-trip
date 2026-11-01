@@ -137,22 +137,32 @@ function checkSsl() {
   });
 }
 
-function githubToken() {
-  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) return process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+function hasGh() {
   try {
-    return execFileSync("gh", ["auth", "token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    execFileSync("gh", ["--version"], { stdio: "ignore" });
+    return true;
   } catch {
-    return null; // public repo: CI checks still work without a token
+    return false;
   }
 }
 
-async function githubApi(path, token) {
+// In Claude cloud sessions GH_TOKEN/GITHUB_TOKEN are the placeholder "proxy-injected":
+// only `gh api` goes through the GitHub proxy with real credentials. Prefer gh,
+// fall back to unauthenticated fetch (repo is public).
+const USE_GH = hasGh();
+
+async function githubApi(path) {
+  if (USE_GH) {
+    try {
+      return JSON.parse(execFileSync("gh", ["api", `repos/${REPO}/${path}`], {
+        encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 15_000,
+      }));
+    } catch (e) {
+      throw new Error(`gh api ${path}: ${(e.stderr || e.message).toString().split("\n")[0]}`);
+    }
+  }
   const response = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "User-Agent": "stt-health-check/1",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { Accept: "application/vnd.github+json", "User-Agent": "stt-health-check/1" },
     signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) throw new Error(`GitHub API ${response.status} em ${path}`);
@@ -160,11 +170,10 @@ async function githubApi(path, token) {
 }
 
 async function checkGithub() {
-  const token = githubToken();
   for (const t of targets) {
     try {
       const { workflow_runs: [run] } = await githubApi(
-        `actions/workflows/quality.yml/runs?branch=${encodeURIComponent(t.branch)}&per_page=1`, token);
+        `actions/workflows/quality.yml/runs?branch=${encodeURIComponent(t.branch)}&per_page=1`);
       if (!run) { record("github", `CI ${t.branch}`, true, null, { note: "sem execuções" }); continue; }
       const ok = run.status !== "completed" || run.conclusion === "success";
       record("github", `CI ${t.branch}`, ok, `último Quality: ${run.conclusion} ${run.html_url}`, { sha: run.head_sha?.slice(0, 8) });
@@ -172,12 +181,12 @@ async function checkGithub() {
       record("github", `CI ${t.branch}`, false, e.message);
     }
   }
-  if (!token) {
-    record("github", "dependabot alerts", true, null, { skipped: true, note: "sem token do GitHub" });
+  if (!USE_GH) {
+    record("github", "dependabot alerts", true, null, { skipped: true, note: "gh indisponível" });
     return;
   }
   try {
-    const alerts = await githubApi("dependabot/alerts?state=open&per_page=100", token);
+    const alerts = await githubApi("dependabot/alerts?state=open&per_page=100");
     const serious = alerts.filter((a) => ["critical", "high"].includes(a.security_advisory?.severity));
     record("github", "dependabot alerts", serious.length === 0,
       serious.slice(0, 5).map((a) => `${a.security_advisory.severity} ${a.dependency?.package?.name} (${a.dependency?.manifest_path})`).join("; "),
