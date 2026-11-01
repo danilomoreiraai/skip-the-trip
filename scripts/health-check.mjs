@@ -137,43 +137,60 @@ function checkSsl() {
   });
 }
 
-function gh(args) {
-  return JSON.parse(execFileSync("gh", args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }));
+function githubToken() {
+  if (process.env.GH_TOKEN || process.env.GITHUB_TOKEN) return process.env.GH_TOKEN || process.env.GITHUB_TOKEN;
+  try {
+    return execFileSync("gh", ["auth", "token"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return null; // public repo: CI checks still work without a token
+  }
 }
 
-function checkGithub() {
-  try {
-    execFileSync("gh", ["--version"], { stdio: "ignore" });
-  } catch {
-    record("github", "gh", false, "gh CLI indisponível: checagens do GitHub puladas", { skipped: true });
-    return;
-  }
+async function githubApi(path, token) {
+  const response = await fetch(`https://api.github.com/repos/${REPO}/${path}`, {
+    headers: {
+      Accept: "application/vnd.github+json",
+      "User-Agent": "stt-health-check/1",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`GitHub API ${response.status} em ${path}`);
+  return response.json();
+}
+
+async function checkGithub() {
+  const token = githubToken();
   for (const t of targets) {
     try {
-      const [run] = gh(["run", "list", "-R", REPO, "-b", t.branch, "-w", "Quality", "-L", "1",
-        "--json", "conclusion,status,url,headSha,createdAt"]);
+      const { workflow_runs: [run] } = await githubApi(
+        `actions/workflows/quality.yml/runs?branch=${encodeURIComponent(t.branch)}&per_page=1`, token);
       if (!run) { record("github", `CI ${t.branch}`, true, null, { note: "sem execuções" }); continue; }
       const ok = run.status !== "completed" || run.conclusion === "success";
-      record("github", `CI ${t.branch}`, ok, `último Quality: ${run.conclusion} ${run.url}`, { sha: run.headSha?.slice(0, 8) });
+      record("github", `CI ${t.branch}`, ok, `último Quality: ${run.conclusion} ${run.html_url}`, { sha: run.head_sha?.slice(0, 8) });
     } catch (e) {
-      record("github", `CI ${t.branch}`, false, `erro gh: ${e.message.split("\n")[0]}`);
+      record("github", `CI ${t.branch}`, false, e.message);
     }
   }
+  if (!token) {
+    record("github", "dependabot alerts", true, null, { skipped: true, note: "sem token do GitHub" });
+    return;
+  }
   try {
-    const alerts = gh(["api", `repos/${REPO}/dependabot/alerts?state=open&per_page=100`]);
+    const alerts = await githubApi("dependabot/alerts?state=open&per_page=100", token);
     const serious = alerts.filter((a) => ["critical", "high"].includes(a.security_advisory?.severity));
     record("github", "dependabot alerts", serious.length === 0,
       serious.slice(0, 5).map((a) => `${a.security_advisory.severity} ${a.dependency?.package?.name} (${a.dependency?.manifest_path})`).join("; "),
       { open: alerts.length, highOrCritical: serious.length });
   } catch (e) {
-    record("github", "dependabot alerts", true, null, { skipped: true, note: e.message.split("\n")[0] });
+    record("github", "dependabot alerts", true, null, { skipped: true, note: e.message });
   }
 }
 
 try {
   for (const t of targets) await checkTarget(t);
   await checkSsl();
-  checkGithub();
+  await checkGithub();
   const failures = checks.filter((c) => !c.ok);
   const report = {
     generatedAt: new Date().toISOString(),
@@ -185,6 +202,7 @@ try {
     revisions: Object.fromEntries(checks.filter((c) => c.revision).map((c) => [c.target, c.revision])),
     sslDays: checks.find((c) => c.check === "ssl")?.days,
     slowestMs: Math.max(0, ...checks.map((c) => c.ms ?? 0)),
+    skipped: checks.filter((c) => c.skipped).map((c) => `${c.check}: ${c.note}`),
   };
   const json = JSON.stringify(report, null, 2);
   if (outFile) writeFileSync(outFile, json);
