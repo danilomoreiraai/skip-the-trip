@@ -5,8 +5,10 @@
 As agreed on 18 October 2026 in [#45](https://github.com/danilomoreiraai/skip-the-trip/issues/45),
 Danilo Moreira shares the application link in a group. People choose whether to
 participate spontaneously. There is no registration, participant roster, minimum
-headcount, supervised session, or mandatory device/OS/browser collection. This is
-an experimental portfolio application; functional quality and privacy remain
+headcount, supervised session, or mandatory device/OS/browser collection.
+The owner confirmed on 20 October that this is a temporary experiment intended
+for a selected group agreeing to participate, with later deactivation planned.
+No shutdown date or deletion is scheduled. Functional quality and privacy remain
 required. HH5 contribution restrictions remain unchanged. Sharing in a group is
 a distribution choice, not an access-control boundary: the public link can be forwarded.
 
@@ -104,11 +106,13 @@ details. Application data, backups and rights requests follow their existing
 
 ## Promotion boundary and evidence
 
-#1 remains open for consented analytics collection evidence; analytics is not a
-required measure of participation. #22 retains its privacy/legal review scope.
-This experimental beta does not certify commercial, broad public-launch, legal
-or complete accessibility readiness. The live notice and privacy contact remain
-required. A concrete privacy concern blocks the experiment regardless of its size.
+#1 records verified consented analytics collection; analytics is not a required
+measure of participation. Under the owner's 20 October decision, independent legal
+review and wider-launch preparation are outside this temporary experiment. #22
+retains technical privacy/provider-evidence follow-up. No completed legal review
+or complete accessibility coverage is asserted. The live notice, privacy contact,
+consent choices, retention and security controls remain required. A concrete
+privacy concern blocks the experiment regardless of its size.
 
 Record revision, CI/provider/public checks, manual/automated results, known
 unverified coverage, defect links, owner and next review date. Repository procedures

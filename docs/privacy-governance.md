@@ -80,10 +80,20 @@ keeps both choices available.
 - Do not publish credentials, DSNs, Apple Account details, backup contents or
   private legal advice as evidence.
 
-## Legal review status
+## Temporary experiment scope — 20 October 2026
 
-The technical inventory and controller decisions are recorded, but independent
-legal review for the intended Ireland/EEA launch remains pending under GitHub
-issue #22. Wider public promotion must not treat that review as complete until
-the reviewer, date, reviewed revision, jurisdictional scope and blocking
-findings are recorded.
+The owner has limited this workstream to a temporary experimental portfolio app
+for a selected group whose members agree to participate. Independent legal review
+and preparation for wider public promotion are removed from the project's
+acceptance and issue-closure criteria. This records a scope decision, not a
+completed legal review or a legal exemption.
+
+Issue #22 retains technical checks of the processing inventory, published notice,
+provider configuration and retention evidence. Existing consent choices, contact
+and rights workflows, data minimization, retention and security controls remain
+in place. Agreement to participate does not replace the app's analytics choice.
+The existing public URL remains forwardable; no access restriction is introduced.
+
+The owner intends to deactivate the app after the experiment. No date is defined
+and no shutdown, deletion or reminder is scheduled. When shutdown is planned,
+record its date and data/backup disposition under the existing retention rules.
